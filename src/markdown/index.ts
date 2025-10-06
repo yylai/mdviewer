@@ -58,7 +58,7 @@ export async function renderMarkdown(content: string) {
     .use(rehypeSanitize, sanitizeSchema)
     .use(rehypeReact, {
       ...prod,
-    } as any)
+    } as never)
     .process(content);
 
   return file.result;

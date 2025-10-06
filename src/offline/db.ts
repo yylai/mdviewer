@@ -40,9 +40,17 @@ export interface PendingOperation {
   id?: number;
   type: 'upload' | 'delete' | 'update';
   driveItemId: string;
-  data?: any;
+  data?: unknown;
   timestamp: Date;
   retryCount: number;
+}
+
+export interface VaultConfig {
+  id: string;
+  vaultPath: string;
+  vaultName: string;
+  driveItemId: string;
+  selectedAt: Date;
 }
 
 export class VaultDatabase extends Dexie {
@@ -51,6 +59,7 @@ export class VaultDatabase extends Dexie {
   attachments!: Table<Attachment, string>;
   syncState!: Table<SyncState, string>;
   pendingOps!: Table<PendingOperation, number>;
+  vaultConfig!: Table<VaultConfig, string>;
 
   constructor() {
     super('VaultDB');
@@ -60,6 +69,7 @@ export class VaultDatabase extends Dexie {
       attachments: 'id, driveItemId',
       syncState: 'id',
       pendingOps: '++id, type, timestamp',
+      vaultConfig: 'id',
     });
   }
 }

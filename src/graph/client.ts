@@ -41,6 +41,7 @@ export interface DriveItem {
   id: string;
   name: string;
   size?: number;
+  eTag?: string;
   file?: {
     mimeType: string;
   };
@@ -75,4 +76,19 @@ export async function downloadFileContent(
     .responseType(ResponseType.TEXT)
     .get();
   return response;
+}
+
+export async function getDriveItem(
+  client: Client,
+  itemId: string
+): Promise<DriveItem> {
+  return await client.api(`/me/drive/items/${itemId}`).get();
+}
+
+export async function getDriveItemByPath(
+  client: Client,
+  path: string
+): Promise<DriveItem> {
+  const endpoint = `/me/drive/root:/${path}`;
+  return await client.api(endpoint).get();
 }

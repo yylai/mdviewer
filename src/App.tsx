@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { msalConfig } from './auth/msalConfig';
 import { Login } from './pages/Login';
 import { Browse } from './pages/Browse';
+import { VaultPicker } from './pages/VaultPicker';
 import { NoteView } from './pages/NoteView';
 import { Settings } from './pages/Settings';
 import './App.css';
@@ -27,6 +28,7 @@ function App() {
         <HashRouter>
           <AuthenticatedTemplate>
             <Routes>
+              <Route path="/vault-picker" element={<VaultPicker />} />
               <Route path="/browse" element={<Browse />} />
               <Route path="/note/:id" element={<NoteView />} />
               <Route path="/settings" element={<Settings />} />

@@ -13,9 +13,10 @@ export function useDriveItems(path: string = '') {
   return useQuery({
     queryKey: ['drive', 'children', path],
     queryFn: () => listDriveItems(client, path),
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: unknown) => {
       // Don't retry on 404 or 401
-      if (error?.statusCode === 404 || error?.statusCode === 401) {
+      const statusCode = (error as { statusCode?: number })?.statusCode;
+      if (statusCode === 404 || statusCode === 401) {
         return false;
       }
       return failureCount < 2;
@@ -30,8 +31,9 @@ export function useFileContent(itemId: string, enabled: boolean = true) {
     queryKey: ['file', 'content', itemId],
     queryFn: () => downloadFileContent(client, itemId),
     enabled,
-    retry: (failureCount, error: any) => {
-      if (error?.statusCode === 404 || error?.statusCode === 401) {
+    retry: (failureCount, error: unknown) => {
+      const statusCode = (error as { statusCode?: number })?.statusCode;
+      if (statusCode === 404 || statusCode === 401) {
         return false;
       }
       return failureCount < 2;
