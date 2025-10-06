@@ -1,5 +1,7 @@
 import { Client, ResponseType } from '@microsoft/microsoft-graph-client';
 import type { IPublicClientApplication } from '@azure/msal-browser';
+import { InteractionRequiredAuthError } from '@azure/msal-browser';
+import { loginRequest } from '@/auth/msalConfig';
 import 'isomorphic-fetch';
 
 export function createGraphClient(msalInstance: IPublicClientApplication) {
@@ -19,8 +21,17 @@ export function createGraphClient(msalInstance: IPublicClientApplication) {
 
         done(null, response.accessToken);
       } catch (error) {
-        console.error('Error acquiring token:', error);
-        done(error as Error, null);
+        if (error instanceof InteractionRequiredAuthError) {
+          try {
+            await msalInstance.loginRedirect(loginRequest);
+          } catch (redirectError) {
+            console.error('Re-authentication failed:', redirectError);
+            done(redirectError as Error, null);
+          }
+        } else {
+          console.error('Error acquiring token:', error);
+          done(error as Error, null);
+        }
       }
     },
   });
