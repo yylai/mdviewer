@@ -1,4 +1,4 @@
-import { Client } from '@microsoft/microsoft-graph-client';
+import { Client, ResponseType } from '@microsoft/microsoft-graph-client';
 import type { IPublicClientApplication } from '@azure/msal-browser';
 import 'isomorphic-fetch';
 
@@ -59,6 +59,9 @@ export async function downloadFileContent(
   client: Client,
   itemId: string
 ): Promise<string> {
-  const response = await client.api(`/me/drive/items/${itemId}/content`).get();
+  const response = await client
+    .api(`/me/drive/items/${itemId}/content`)
+    .responseType(ResponseType.TEXT)
+    .get();
   return response;
 }
