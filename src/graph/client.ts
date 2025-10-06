@@ -1,0 +1,64 @@
+import { Client } from '@microsoft/microsoft-graph-client';
+import type { IPublicClientApplication } from '@azure/msal-browser';
+import 'isomorphic-fetch';
+
+export function createGraphClient(msalInstance: IPublicClientApplication) {
+  return Client.init({
+    authProvider: async (done) => {
+      try {
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length === 0) {
+          done(new Error('No authenticated accounts'), null);
+          return;
+        }
+
+        const response = await msalInstance.acquireTokenSilent({
+          scopes: ['Files.Read'],
+          account: accounts[0],
+        });
+
+        done(null, response.accessToken);
+      } catch (error) {
+        console.error('Error acquiring token:', error);
+        done(error as Error, null);
+      }
+    },
+  });
+}
+
+export interface DriveItem {
+  id: string;
+  name: string;
+  size?: number;
+  file?: {
+    mimeType: string;
+  };
+  folder?: {
+    childCount: number;
+  };
+  parentReference?: {
+    path: string;
+  };
+  lastModifiedDateTime?: string;
+  '@microsoft.graph.downloadUrl'?: string;
+}
+
+export async function listDriveItems(
+  client: Client,
+  path: string = ''
+): Promise<DriveItem[]> {
+  const endpoint = path
+    ? `/me/drive/root:/${path}:/children`
+    : '/me/drive/root/children';
+
+  const response = await client.api(endpoint).get();
+  return response.value || [];
+}
+
+export async function downloadFileContent(
+  client: Client,
+  itemId: string
+): Promise<string> {
+  const response = await client.api(`/me/drive/items/${itemId}/content`).get();
+  return response;
+}
