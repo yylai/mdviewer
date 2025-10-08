@@ -11,6 +11,7 @@ import rehypeSlug from 'rehype-slug';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeReact from 'rehype-react';
 import * as prod from 'react/jsx-runtime';
+import yaml from 'js-yaml';
 
 const sanitizeSchema = {
   ...defaultSchema,
@@ -49,6 +50,16 @@ const sanitizeSchema = {
     'annotation',
   ],
 };
+
+export function extractFrontmatter(content: string): { source?: string } | null {
+  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!match) return null;
+  try {
+    return yaml.load(match[1]) as { source?: string };
+  } catch {
+    return null;
+  }
+}
 
 export async function renderMarkdown(content: string) {
   const file = await unified()

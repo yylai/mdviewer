@@ -1,9 +1,9 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Eye, Code } from 'lucide-react';
+import { ArrowLeft, Eye, Code, ExternalLink } from 'lucide-react';
 import { useFileContent } from '@/graph/hooks';
-import { renderMarkdown } from '@/markdown';
+import { renderMarkdown, extractFrontmatter } from '@/markdown';
 import { resolveSlugToItemId } from '@/markdown/linkResolver';
 import 'katex/dist/katex.min.css';
 
@@ -14,8 +14,9 @@ export function NoteView() {
   const [itemId, setItemId] = useState<string | null>(null);
   const [renderedContent, setRenderedContent] = useState<unknown>(null);
   const [showRaw, setShowRaw] = useState(false);
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
 
-  const { data: content, isLoading, error, refetch } = useFileContent(itemId || '', !!itemId);
+  const { data: content, isLoading, error } = useFileContent(itemId || '', !!itemId);
 
   useEffect(() => {
     if (slug) {
@@ -29,6 +30,8 @@ export function NoteView() {
 
   useEffect(() => {
     if (content) {
+      const frontmatter = extractFrontmatter(content);
+      setSourceUrl(frontmatter?.source || null);
       renderMarkdown(content).then(result => {
         setRenderedContent(result);
       });
@@ -73,23 +76,36 @@ export function NoteView() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto p-4">
-        <div className="flex items-center gap-4 mb-6 pb-2 border-b">
-          <Button onClick={() => navigate(-1)} variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-xl font-bold flex-1 truncate">{slug}</h1>
-          <Button onClick={() => setShowRaw(!showRaw)} variant="ghost" size="icon" title={showRaw ? 'Show rendered' : 'Show raw'}>
-            {showRaw ? <Eye className="h-4 w-4" /> : <Code className="h-4 w-4" />}
-          </Button>
-          <Button onClick={() => refetch()} variant="ghost" size="icon" disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </Button>
+      <div className="border-b bg-card">
+        <div className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <Button onClick={() => navigate(-1)} variant="ghost" size="icon">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <h1 className="text-xl font-semibold truncate">{slug}</h1>
+            </div>
+            <div className="flex items-center gap-1">
+              {sourceUrl && (
+                <Button asChild variant="ghost" size="icon">
+                  <a href={sourceUrl} target="_blank" rel="noopener noreferrer" title="Open original article">
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </Button>
+              )}
+              <Button onClick={() => setShowRaw(!showRaw)} variant="ghost" size="icon" title={showRaw ? 'Show rendered' : 'Show raw'}>
+                {showRaw ? <Eye className="h-4 w-4" /> : <Code className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto p-4">
 
         {isLoading && (
           <div className="flex items-center justify-center py-12">
-            <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="text-muted-foreground">Loading...</div>
           </div>
         )}
 
