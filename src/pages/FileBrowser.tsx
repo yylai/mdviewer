@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useDriveItems } from '@/graph/hooks';
 import { getVaultConfig } from '@/offline/vaultConfig';
 import { db } from '@/offline/db';
+import { createSlugFromFilename } from '@/markdown/linkResolver';
 import type { DriveItem } from '@/graph/client';
 import type { VaultConfig } from '@/offline/db';
 
@@ -79,7 +80,8 @@ export function FileBrowser() {
 
   const handleFileClick = (file: DriveItem) => {
     if (file.name.endsWith('.md')) {
-      navigate(`/note/${file.id}`);
+      const slug = createSlugFromFilename(file.name);
+      navigate(`/note/${slug}`);
     }
   };
 

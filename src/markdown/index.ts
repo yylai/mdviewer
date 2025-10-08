@@ -11,7 +11,6 @@ import rehypeSlug from 'rehype-slug';
 import rehypeReact from 'rehype-react';
 import * as prod from 'react/jsx-runtime';
 
-// Extend sanitize schema to allow KaTeX output
 const sanitizeSchema = {
   ...defaultSchema,
   attributes: {
@@ -49,8 +48,21 @@ export async function renderMarkdown(content: string) {
     .use(remarkFrontmatter, ['yaml'])
     .use(remarkMath)
     .use(remarkWikiLink, {
-      pageResolver: (name: string) => [name.replace(/ /g, '-').toLowerCase()],
-      hrefTemplate: (permalink: string) => `#/note/${permalink}`,
+      pageResolver: (name: string) => {
+        const slug = name
+          .split('#')[0]
+          .replace(/ /g, '-')
+          .toLowerCase();
+        return [slug];
+      },
+      hrefTemplate: (permalink: string) => {
+        const fullLink = permalink;
+        if (fullLink.includes('#')) {
+          const [slug, anchor] = fullLink.split('#');
+          return `#/note/${slug}#${anchor}`;
+        }
+        return `#/note/${permalink}`;
+      },
     })
     .use(remarkRehype)
     .use(rehypeSlug)

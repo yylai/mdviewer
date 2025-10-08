@@ -14,6 +14,7 @@
     "@azure/msal-react": "^3.0.20",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@radix-ui/react-slot": "^1.2.3",
+    "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.14",
     "@tanstack/react-query": "^5.90.2",
     "class-variance-authority": "^0.7.1",
