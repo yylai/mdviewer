@@ -1,7 +1,7 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Eye, Code } from 'lucide-react';
 import { useFileContent } from '@/graph/hooks';
 import { renderMarkdown } from '@/markdown';
 import { resolveSlugToItemId } from '@/markdown/linkResolver';
@@ -13,6 +13,7 @@ export function NoteView() {
   const location = useLocation();
   const [itemId, setItemId] = useState<string | null>(null);
   const [renderedContent, setRenderedContent] = useState<unknown>(null);
+  const [showRaw, setShowRaw] = useState(false);
 
   const { data: content, isLoading, error, refetch } = useFileContent(itemId || '', !!itemId);
 
@@ -78,6 +79,9 @@ export function NoteView() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-xl font-bold flex-1 truncate">{slug}</h1>
+          <Button onClick={() => setShowRaw(!showRaw)} variant="ghost" size="icon" title={showRaw ? 'Show rendered' : 'Show raw'}>
+            {showRaw ? <Eye className="h-4 w-4" /> : <Code className="h-4 w-4" />}
+          </Button>
           <Button onClick={() => refetch()} variant="ghost" size="icon" disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
@@ -98,9 +102,15 @@ export function NoteView() {
           </div>
         )}
 
-        <article className="prose prose-slate dark:prose-invert max-w-none">
-          <>{renderedContent}</>
-        </article>
+        {showRaw ? (
+          <pre className="bg-muted p-4 rounded-md overflow-auto text-sm">
+            <code>{content}</code>
+          </pre>
+        ) : (
+          <article className="prose prose-slate dark:prose-invert max-w-none">
+            <>{renderedContent}</>
+          </article>
+        )}
       </div>
     </div>
   );
