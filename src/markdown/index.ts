@@ -8,6 +8,7 @@ import remarkRehype from 'remark-rehype';
 import rehypeKatex from 'rehype-katex';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeSlug from 'rehype-slug';
+import rehypeHighlight from 'rehype-highlight';
 import rehypeReact from 'rehype-react';
 import * as prod from 'react/jsx-runtime';
 
@@ -17,7 +18,15 @@ const sanitizeSchema = {
     ...defaultSchema.attributes,
     span: [
       ...(defaultSchema.attributes?.span || []),
-      ['className', 'katex', 'katex-display', 'katex-html', 'katex-mathml'],
+      ['className', 'katex', 'katex-display', 'katex-html', 'katex-mathml', /^hljs-/],
+    ],
+    code: [
+      ...(defaultSchema.attributes?.code || []),
+      ['className', /^language-/, /^hljs/],
+    ],
+    pre: [
+      ...(defaultSchema.attributes?.pre || []),
+      ['className'],
     ],
     math: ['xmlns'],
     semantics: [],
@@ -67,6 +76,7 @@ export async function renderMarkdown(content: string) {
     .use(remarkRehype)
     .use(rehypeSlug)
     .use(rehypeKatex)
+    .use(rehypeHighlight)
     .use(rehypeSanitize, sanitizeSchema)
     .use(rehypeReact, {
       ...prod,
