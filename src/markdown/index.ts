@@ -12,6 +12,7 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeReact from 'rehype-react';
 import * as prod from 'react/jsx-runtime';
 import yaml from 'js-yaml';
+import rehypeTrimCode from './rehype-trim-code';
 
 const sanitizeSchema = {
   ...defaultSchema,
@@ -87,6 +88,7 @@ export async function renderMarkdown(content: string) {
     .use(remarkRehype)
     .use(rehypeSlug)
     .use(rehypeKatex)
+    .use(rehypeTrimCode)
     .use(rehypeHighlight)
     .use(rehypeSanitize, sanitizeSchema)
     .use(rehypeReact, {
