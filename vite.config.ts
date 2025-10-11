@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/',
   plugins: [
     react({
       babel: {
@@ -40,6 +41,7 @@ export default defineConfig({
         ]
       },
       workbox: {
+        navigateFallback: '/index.html',
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/graph\.microsoft\.com\/.*/i,
