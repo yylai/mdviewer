@@ -15,6 +15,8 @@ export function VaultPicker() {
   const { data: items, isLoading, error } = useDriveItems(currentPath);
 
   const folders = items?.filter(item => item.folder) || [];
+  const parentCrumbs = pathStack.slice(0, -1);
+  const currentFolderName = currentPath ? currentPath.split('/').pop() : null;
 
   const handleFolderClick = (folder: DriveItem) => {
     const newPath = currentPath ? `${currentPath}/${folder.name}` : folder.name;
@@ -64,12 +66,14 @@ export function VaultPicker() {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <HardDrive className="w-4 h-4" />
             <span>/</span>
-            {pathStack.map((item, idx) => (
-              <span key={idx}>
+            {parentCrumbs.map((item, idx) => (
+              <span key={`${item.path}-${idx}`}>
                 {item.name} /
               </span>
             ))}
-            {currentPath && <span className="font-medium text-foreground">{currentPath.split('/').pop()}</span>}
+            {currentFolderName && (
+              <span className="font-medium text-foreground">{currentFolderName}</span>
+            )}
           </div>
 
           {error ? (
