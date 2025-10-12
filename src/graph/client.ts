@@ -66,15 +66,6 @@ export interface ListDriveItemsOptions {
   pageSize?: number;
 }
 
-const GRAPH_BASE_URL = 'https://graph.microsoft.com/v1.0';
-
-function normalizeNextLink(nextLink: string) {
-  if (nextLink.startsWith(GRAPH_BASE_URL)) {
-    return nextLink.slice(GRAPH_BASE_URL.length);
-  }
-  return nextLink;
-}
-
 export async function listDriveItems(
   client: Client,
   options: ListDriveItemsOptions = {}
@@ -93,7 +84,7 @@ export async function listDriveItems(
   ].join(',');
 
   const request = nextLink
-    ? client.api(normalizeNextLink(nextLink))
+    ? client.api(nextLink)
     : client
         .api(
           path ? `/me/drive/root:/${path}:/children` : '/me/drive/root/children'
