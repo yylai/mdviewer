@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Folder, HardDrive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,8 @@ export function VaultPicker() {
     hasNextPage,
     isFetchingNextPage,
   } = useDriveItems(currentPath);
+
+  const loadMoreTriggerRef = useRef<HTMLDivElement | null>(null);
 
   const folders = items?.filter(item => item.folder) || [];
   const parentCrumbs = pathStack.slice(0, -1);
@@ -59,6 +61,29 @@ export function VaultPicker() {
     
     navigate('/browse');
   };
+
+  useEffect(() => {
+    if (!hasNextPage) return;
+
+    const target = loadMoreTriggerRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -109,6 +134,9 @@ export function VaultPicker() {
                     <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   </button>
                 ))
+              )}
+              {hasNextPage && (
+                <div ref={loadMoreTriggerRef} className="h-1 w-full" aria-hidden="true" />
               )}
             </div>
           )}

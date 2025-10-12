@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, File, Folder, FileText, Settings, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,8 @@ export function FileBrowser() {
     isFetchingNextPage,
   } = useDriveItems(currentPath);
 
+  const loadMoreTriggerRef = useRef<HTMLDivElement | null>(null);
+
   const sortedAndFilteredItems = useMemo(() => {
     if (!items || items.length === 0) return { folders: [], files: [] };
 
@@ -80,6 +82,29 @@ export function FileBrowser() {
       });
     }
   }, [items, vaultConfig, relativePath]);
+
+  useEffect(() => {
+    if (!hasNextPage) return;
+
+    const target = loadMoreTriggerRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   const handleFolderClick = (folder: DriveItem) => {
     const newPath = currentPath ? `${currentPath}/${folder.name}` : folder.name;
@@ -205,7 +230,8 @@ export function FileBrowser() {
             )}
 
             {hasNextPage && (
-              <div className="mt-4 flex justify-center">
+              <div className="mt-4 flex flex-col items-center gap-3">
+                <div ref={loadMoreTriggerRef} className="h-1 w-full" aria-hidden="true" />
                 <Button
                   variant="outline"
                   onClick={() => fetchNextPage()}
