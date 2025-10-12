@@ -1,6 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useMsal } from '@azure/msal-react';
-import { createGraphClient, listDriveItems, getDriveItem } from './client';
+import {
+  createGraphClient,
+  listDriveItems,
+  getDriveItem,
+  type DriveItemsPage,
+} from './client';
 import { getOrFetchContent } from '@/offline/content';
 
 export function useGraphClient() {
@@ -11,9 +16,12 @@ export function useGraphClient() {
 export function useDriveItems(path: string = '') {
   const client = useGraphClient();
 
-  return useQuery({
+  const query = useInfiniteQuery({
     queryKey: ['drive', 'children', path],
-    queryFn: () => listDriveItems(client, path),
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) =>
+      listDriveItems(client, { path, nextLink: pageParam ?? null }),
+    getNextPageParam: (lastPage: DriveItemsPage) => lastPage.nextLink ?? undefined,
     retry: (failureCount, error: unknown) => {
       const statusCode = (error as { statusCode?: number })?.statusCode;
       if (statusCode === 404 || statusCode === 401) {
@@ -22,6 +30,14 @@ export function useDriveItems(path: string = '') {
       return failureCount < 2;
     },
   });
+
+  const items =
+    query.data?.pages.flatMap((page: DriveItemsPage) => page.items) ?? [];
+
+  return {
+    ...query,
+    items,
+  };
 }
 
 export function useFileContent(itemId: string, enabled: boolean = true) {

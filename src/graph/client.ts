@@ -55,16 +55,58 @@ export interface DriveItem {
   '@microsoft.graph.downloadUrl'?: string;
 }
 
+export interface DriveItemsPage {
+  items: DriveItem[];
+  nextLink?: string | null;
+}
+
+export interface ListDriveItemsOptions {
+  path?: string;
+  nextLink?: string | null;
+  pageSize?: number;
+}
+
+const GRAPH_BASE_URL = 'https://graph.microsoft.com/v1.0';
+
+function normalizeNextLink(nextLink: string) {
+  if (nextLink.startsWith(GRAPH_BASE_URL)) {
+    return nextLink.slice(GRAPH_BASE_URL.length);
+  }
+  return nextLink;
+}
+
 export async function listDriveItems(
   client: Client,
-  path: string = ''
-): Promise<DriveItem[]> {
-  const endpoint = path
-    ? `/me/drive/root:/${path}:/children`
-    : '/me/drive/root/children';
+  options: ListDriveItemsOptions = {}
+): Promise<DriveItemsPage> {
+  const { path = '', nextLink = null, pageSize = 200 } = options;
 
-  const response = await client.api(endpoint).get();
-  return response.value || [];
+  const selectFields = [
+    'id',
+    'name',
+    'size',
+    'eTag',
+    'lastModifiedDateTime',
+    'parentReference',
+    'folder',
+    'file',
+  ].join(',');
+
+  const request = nextLink
+    ? client.api(normalizeNextLink(nextLink))
+    : client
+        .api(
+          path ? `/me/drive/root:/${path}:/children` : '/me/drive/root/children'
+        )
+        .top(pageSize)
+        .select(selectFields);
+
+  const response = await request.get();
+
+  return {
+    items: response.value || [],
+    nextLink: response['@odata.nextLink'] || null,
+  };
 }
 
 export async function downloadFileContent(

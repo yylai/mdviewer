@@ -12,7 +12,14 @@ export function VaultPicker() {
   const [pathStack, setPathStack] = useState<Array<{ name: string; path: string }>>([]);
   const navigate = useNavigate();
   
-  const { data: items, isLoading, error } = useDriveItems(currentPath);
+  const {
+    items,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useDriveItems(currentPath);
 
   const folders = items?.filter(item => item.folder) || [];
   const parentCrumbs = pathStack.slice(0, -1);
@@ -104,6 +111,17 @@ export function VaultPicker() {
                 ))
               )}
             </div>
+          )}
+
+          {hasNextPage && (
+            <Button
+              variant="outline"
+              onClick={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
+              className="w-full"
+            >
+              {isFetchingNextPage ? 'Loading more folders…' : 'Load more folders'}
+            </Button>
           )}
 
           <div className="flex gap-2">

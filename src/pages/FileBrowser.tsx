@@ -31,10 +31,18 @@ export function FileBrowser() {
     ? currentPath.replace(vaultConfig.vaultPath, '').replace(/^\//, '')
     : currentPath;
 
-  const { data: items, isLoading, error, refetch } = useDriveItems(currentPath);
+  const {
+    items,
+    isLoading,
+    error,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useDriveItems(currentPath);
 
   const sortedAndFilteredItems = useMemo(() => {
-    if (!items) return { folders: [], files: [] };
+    if (!items || items.length === 0) return { folders: [], files: [] };
 
     const filtered = items.filter(item =>
       item.name.toLowerCase().includes(filter.toLowerCase())
@@ -56,7 +64,7 @@ export function FileBrowser() {
   }, [items, filter]);
 
   useEffect(() => {
-    if (items && vaultConfig) {
+    if (items.length > 0 && vaultConfig) {
       items.forEach(async (item) => {
         const itemPath = relativePath ? `${relativePath}/${item.name}` : item.name;
         await db.files.put({
@@ -193,6 +201,23 @@ export function FileBrowser() {
             {sortedAndFilteredItems.folders.length === 0 && sortedAndFilteredItems.files.length === 0 && (
               <div className="text-center py-12 text-muted-foreground">
                 {filter ? 'No files match your filter' : 'This folder is empty'}
+              </div>
+            )}
+
+            {hasNextPage && (
+              <div className="mt-4 flex justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
+                  {isFetchingNextPage ? 'Loading more…' : 'Load more'}
+                </Button>
+              </div>
+            )}
+            {isFetchingNextPage && !hasNextPage && (
+              <div className="text-center py-4 text-muted-foreground">
+                Loading more files…
               </div>
             )}
           </>
