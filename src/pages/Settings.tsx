@@ -7,13 +7,39 @@ import { useAuth } from '@/auth/useAuth';
 import { getVaultConfig, clearVaultConfig } from '@/offline/vaultConfig';
 import type { VaultConfig } from '@/offline/db';
 
+function formatBytes(value?: number): string {
+  if (value === undefined || value === null) return 'Unknown';
+  if (value === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
+  const num = value / 1024 ** i;
+  return `${num.toFixed(num >= 10 ? 0 : 1)} ${units[i]}`;
+}
+
 export function Settings() {
   const { account, logout } = useAuth();
   const navigate = useNavigate();
   const [vaultConfig, setVaultConfig] = useState<VaultConfig | null>(null);
+  const [storageInfo, setStorageInfo] = useState<{ usage?: number; quota?: number; error?: string }>({});
 
   useEffect(() => {
     getVaultConfig().then(setVaultConfig);
+  }, []);
+
+  useEffect(() => {
+    async function fetchStorageInfo() {
+      if (!('storage' in navigator) || !('estimate' in navigator.storage)) {
+        setStorageInfo({ error: 'Storage estimate not supported in this browser.' });
+        return;
+      }
+      try {
+        const estimate = await navigator.storage.estimate();
+        setStorageInfo({ usage: estimate.usage, quota: estimate.quota });
+      } catch (error) {
+        setStorageInfo({ error: error instanceof Error ? error.message : 'Failed to read storage usage.' });
+      }
+    }
+    fetchStorageInfo();
   }, []);
 
   const handleChangeVault = async () => {
@@ -24,6 +50,15 @@ export function Settings() {
   const handleClearCache = async () => {
     if (confirm('Clear all cached files? You will need to sync again.')) {
       await clearVaultConfig();
+      // Refresh storage info after clearing cache
+      if ('storage' in navigator && 'estimate' in navigator.storage) {
+        try {
+          const estimate = await navigator.storage.estimate();
+          setStorageInfo({ usage: estimate.usage, quota: estimate.quota });
+        } catch (error) {
+          // Ignore errors when refreshing after clear
+        }
+      }
       navigate('/vault-picker');
     }
   };
@@ -62,7 +97,7 @@ export function Settings() {
                 </div>
               </div>
             )}
-            
+
             <Button onClick={handleChangeVault} variant="outline" className="w-full">
               Change Vault
             </Button>
@@ -77,7 +112,26 @@ export function Settings() {
             </CardTitle>
             <CardDescription>Manage offline storage</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            {storageInfo.error ? (
+              <div className="text-sm text-muted-foreground">{storageInfo.error}</div>
+            ) : (
+              <div className="text-sm space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Used</span>
+                  <span className="font-medium">{formatBytes(storageInfo.usage)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Quota</span>
+                  <span className="font-medium">{formatBytes(storageInfo.quota)}</span>
+                </div>
+                {storageInfo.usage !== undefined && storageInfo.quota !== undefined && storageInfo.quota > 0 && (
+                  <div className="text-xs text-muted-foreground">
+                    {((storageInfo.usage / storageInfo.quota) * 100).toFixed(1)}% of available storage
+                  </div>
+                )}
+              </div>
+            )}
             <Button onClick={handleClearCache} variant="outline" className="w-full">
               Clear Cache
             </Button>
