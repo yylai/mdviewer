@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, File, Folder, FileText, Settings, Search } from 'lucide-react';
+import { ChevronLeft, File, Folder, FileText, Settings, Search, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useDriveItems, usePrefetchFileContent } from '@/graph/hooks';
@@ -11,10 +11,15 @@ import { CacheIndicator } from '@/components/CacheIndicator';
 import type { DriveItem } from '@/graph/client';
 import type { VaultConfig } from '@/offline/db';
 
+type SortField = 'name' | 'date';
+type SortDirection = 'asc' | 'desc';
+
 export function FileBrowser() {
   const [vaultConfig, setVaultConfig] = useState<VaultConfig | null>(null);
   const [currentPath, setCurrentPath] = useState('');
   const [filter, setFilter] = useState('');
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const navigate = useNavigate();
   const prefetchContent = usePrefetchFileContent();
 
@@ -52,20 +57,42 @@ export function FileBrowser() {
       item.name.toLowerCase().includes(filter.toLowerCase())
     );
 
-    const folders = filtered.filter(item => item.folder).sort((a, b) =>
-      a.name.localeCompare(b.name)
-    );
+    const compareItems = (a: DriveItem, b: DriveItem): number => {
+      if (sortField === 'name') {
+        const comparison = a.name.localeCompare(b.name);
+        return sortDirection === 'asc' ? comparison : -comparison;
+      } else {
+        // Sort by date (lastModifiedDateTime)
+        const aDate = a.lastModifiedDateTime ? new Date(a.lastModifiedDateTime).getTime() : 0;
+        const bDate = b.lastModifiedDateTime ? new Date(b.lastModifiedDateTime).getTime() : 0;
+
+        // If either item is missing date, fallback to name comparison
+        if (aDate === 0 && bDate === 0) {
+          const comparison = a.name.localeCompare(b.name);
+          return sortDirection === 'asc' ? comparison : -comparison;
+        }
+        if (aDate === 0) return 1; // Items without date go to end
+        if (bDate === 0) return -1;
+
+        const comparison = aDate - bDate;
+        return sortDirection === 'asc' ? comparison : -comparison;
+      }
+    };
+
+    const folders = filtered.filter(item => item.folder).sort(compareItems);
 
     const files = filtered.filter(item => item.file).sort((a, b) => {
+      // Keep markdown files first
       const aIsMd = a.name.endsWith('.md');
       const bIsMd = b.name.endsWith('.md');
       if (aIsMd && !bIsMd) return -1;
       if (!aIsMd && bIsMd) return 1;
-      return a.name.localeCompare(b.name);
+      // Then sort by selected field/direction
+      return compareItems(a, b);
     });
 
     return { folders, files };
-  }, [items, filter]);
+  }, [items, filter, sortField, sortDirection]);
 
   useEffect(() => {
     if (items.length > 0 && vaultConfig) {
@@ -153,14 +180,38 @@ export function FileBrowser() {
             </div>
           )}
 
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Filter files..."
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="pl-9"
-            />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Filter files..."
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex gap-2">
+              <select
+                value={sortField}
+                onChange={(e) => setSortField(e.target.value as SortField)}
+                className="px-3 py-2 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                <option value="name">Name</option>
+                <option value="date">Date modified</option>
+              </select>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')}
+                title={`Sort ${sortDirection === 'asc' ? 'ascending' : 'descending'}`}
+              >
+                {sortDirection === 'asc' ? (
+                  <ArrowUp className="w-4 h-4" />
+                ) : (
+                  <ArrowDown className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
