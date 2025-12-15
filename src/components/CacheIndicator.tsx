@@ -28,18 +28,16 @@ export function CacheIndicator({ item }: CacheIndicatorProps) {
 
   if (status === 'cached') {
     return (
-      <CheckCircle2
-        className="w-3 h-3 text-green-500"
-        title="Cached - will load instantly"
-      />
+      <span title="Cached - will load instantly">
+        <CheckCircle2 className="w-3 h-3 text-green-500" />
+      </span>
     );
   }
 
   return (
-    <Cloud
-      className="w-3 h-3 text-blue-500"
-      title="Not cached - will fetch from OneDrive"
-    />
+    <span title="Not cached - will fetch from OneDrive">
+      <Cloud className="w-3 h-3 text-blue-500" />
+    </span>
   );
 }
 
