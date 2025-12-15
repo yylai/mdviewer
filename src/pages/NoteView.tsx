@@ -1,8 +1,9 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, Code, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Eye, Code, ExternalLink, CheckCircle2, Cloud } from 'lucide-react';
 import { useFileContent } from '@/graph/hooks';
+import { useQueryClient } from '@tanstack/react-query';
 import { renderMarkdown, extractFrontmatter } from '@/markdown';
 import { resolveSlugToItemId } from '@/markdown/linkResolver';
 import 'katex/dist/katex.min.css';
@@ -11,10 +12,12 @@ export function NoteView() {
   const { id: slug } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const [itemId, setItemId] = useState<string | null>(null);
   const [renderedContent, setRenderedContent] = useState<unknown>(null);
   const [showRaw, setShowRaw] = useState(false);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
+  const [loadSource, setLoadSource] = useState<'cache' | 'network' | null>(null);
 
   const { data: content, isLoading, error } = useFileContent(itemId || '', !!itemId);
 
@@ -23,10 +26,17 @@ export function NoteView() {
       resolveSlugToItemId(slug).then(id => {
         if (id) {
           setItemId(id);
+          // Check if content already exists in query cache
+          const cachedData = queryClient.getQueryData(['file', 'content', id]);
+          if (cachedData) {
+            setLoadSource('cache');
+          } else {
+            setLoadSource('network');
+          }
         }
       });
     }
-  }, [slug]);
+  }, [slug, queryClient]);
 
   useEffect(() => {
     if (content) {
@@ -86,6 +96,21 @@ export function NoteView() {
               <h1 className="text-xl font-semibold truncate">{slug}</h1>
             </div>
             <div className="flex items-center gap-1">
+              {loadSource && !isLoading && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground px-2">
+                  {loadSource === 'cache' ? (
+                    <>
+                      <CheckCircle2 className="w-3 h-3 text-green-500" />
+                      <span>Cached</span>
+                    </>
+                  ) : (
+                    <>
+                      <Cloud className="w-3 h-3 text-blue-500" />
+                      <span>From OneDrive</span>
+                    </>
+                  )}
+                </div>
+              )}
               {sourceUrl && (
                 <Button asChild variant="ghost" size="icon">
                   <a href={sourceUrl} target="_blank" rel="noopener noreferrer" title="Open original article">

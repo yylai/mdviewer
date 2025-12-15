@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, File, Folder, FileText, Settings, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useDriveItems } from '@/graph/hooks';
+import { useDriveItems, usePrefetchFileContent } from '@/graph/hooks';
 import { getVaultConfig } from '@/offline/vaultConfig';
 import { db } from '@/offline/db';
 import { createSlugFromFilename } from '@/markdown/linkResolver';
+import { CacheIndicator } from '@/components/CacheIndicator';
 import type { DriveItem } from '@/graph/client';
 import type { VaultConfig } from '@/offline/db';
 
@@ -15,6 +16,7 @@ export function FileBrowser() {
   const [currentPath, setCurrentPath] = useState('');
   const [filter, setFilter] = useState('');
   const navigate = useNavigate();
+  const prefetchContent = usePrefetchFileContent();
 
   useEffect(() => {
     getVaultConfig().then(config => {
@@ -27,7 +29,7 @@ export function FileBrowser() {
     });
   }, [navigate]);
 
-  const relativePath = vaultConfig 
+  const relativePath = vaultConfig
     ? currentPath.replace(vaultConfig.vaultPath, '').replace(/^\//, '')
     : currentPath;
 
@@ -50,7 +52,7 @@ export function FileBrowser() {
       item.name.toLowerCase().includes(filter.toLowerCase())
     );
 
-    const folders = filtered.filter(item => item.folder).sort((a, b) => 
+    const folders = filtered.filter(item => item.folder).sort((a, b) =>
       a.name.localeCompare(b.name)
     );
 
@@ -120,7 +122,7 @@ export function FileBrowser() {
 
   const handleBack = () => {
     if (!vaultConfig || currentPath === vaultConfig.vaultPath) return;
-    
+
     const pathParts = currentPath.split('/');
     pathParts.pop();
     setCurrentPath(pathParts.join('/'));
@@ -205,6 +207,12 @@ export function FileBrowser() {
                   <button
                     key={file.id}
                     onClick={() => handleFileClick(file)}
+                    onMouseEnter={() => {
+                      // Prefetch on hover (only for markdown files)
+                      if (isMd) {
+                        prefetchContent(file.id);
+                      }
+                    }}
                     className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 rounded-md transition-colors text-left"
                   >
                     {isMd ? (
@@ -213,11 +221,14 @@ export function FileBrowser() {
                       <File className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                     )}
                     <span className="flex-1 truncate">{file.name}</span>
-                    {file.size && (
-                      <span className="text-xs text-muted-foreground">
-                        {(file.size / 1024).toFixed(1)} KB
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {isMd && <CacheIndicator item={file} />}
+                      {file.size && (
+                        <span className="text-xs text-muted-foreground">
+                          {(file.size / 1024).toFixed(1)} KB
+                        </span>
+                      )}
+                    </div>
                   </button>
                 );
               })}

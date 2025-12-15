@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMsal } from '@azure/msal-react';
 import {
   createGraphClient,
@@ -75,4 +75,26 @@ export function useDriveItem(itemId: string, enabled: boolean = true) {
       return failureCount < 2;
     },
   });
+}
+
+export function usePrefetchFileContent() {
+  const queryClient = useQueryClient();
+  const { instance } = useMsal();
+  const client = createGraphClient(instance);
+
+  return async (itemId: string) => {
+    // Check if already cached in TanStack Query
+    const existingData = queryClient.getQueryData(['file', 'content', itemId]);
+    if (existingData) return; // Already loaded
+
+    // Prefetch (this will check IndexedDB first via getOrFetchContent)
+    await queryClient.prefetchQuery({
+      queryKey: ['file', 'content', itemId],
+      queryFn: async () => {
+        const item = await getDriveItem(client, itemId);
+        return getOrFetchContent(client, itemId, item.eTag);
+      },
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    });
+  };
 }
