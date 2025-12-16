@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Folder } from 'lucide-react';
 import { useDriveItems } from '@/graph/hooks';
 import { getVaultConfig } from '@/offline/vaultConfig';
@@ -24,6 +25,7 @@ interface FolderNode {
 }
 
 export function AppSidebar() {
+  const navigate = useNavigate();
   const { currentPath, setCurrentPath } = useFolderContext();
   const [vaultConfig, setVaultConfig] = useState<VaultConfig | null>(null);
   const [folderTree, setFolderTree] = useState<FolderNode[]>([]);
@@ -59,6 +61,7 @@ export function AppSidebar() {
 
   const handleFolderClick = (folderPath: string) => {
     setCurrentPath(folderPath);
+    navigate('/browse');
   };
 
   if (!vaultConfig) {
