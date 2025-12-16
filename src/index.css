@@ -37,6 +37,9 @@
   --ring: 222.2 84% 4.9%;
 
   --radius: 0.5rem;
+
+  /* Sidebar theme (darker background) */
+  --sidebar: 222.2 47.4% 11.2%;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -69,6 +72,9 @@
     --destructive-foreground: 210 40% 98%;
 
     --ring: 212.7 26.8% 83.9%;
+
+    /* Sidebar theme (darker background for dark mode) */
+    --sidebar: 222.2 47.4% 11.2%;
   }
 }
 
@@ -113,5 +119,35 @@ button {
 .prose blockquote {
   border-left-width: 3px;
   font-style: normal;
+}
+
+/* Sidebar styling */
+.bg-sidebar {
+  background-color: hsl(var(--sidebar));
+}
+
+/* Table styling */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+table thead th {
+  background-color: hsl(var(--card));
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+table tbody tr:hover {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+table tbody tr:last-child td {
+  border-bottom: none;
 }
 

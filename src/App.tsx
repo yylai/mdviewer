@@ -8,6 +8,7 @@ import { Browse } from './pages/Browse';
 import { VaultPicker } from './pages/VaultPicker';
 import { NoteView } from './pages/NoteView';
 import { Settings } from './pages/Settings';
+import { AppLayout } from './components/layout/AppLayout';
 import './App.css';
 
 const msalInstance = new PublicClientApplication(msalConfig);
@@ -29,9 +30,23 @@ function App() {
           <AuthenticatedTemplate>
             <Routes>
               <Route path="/vault-picker" element={<VaultPicker />} />
-              <Route path="/browse" element={<Browse />} />
+              <Route
+                path="/browse"
+                element={
+                  <AppLayout>
+                    <Browse />
+                  </AppLayout>
+                }
+              />
               <Route path="/note/:id" element={<NoteView />} />
-              <Route path="/settings" element={<Settings />} />
+              <Route
+                path="/settings"
+                element={
+                  <AppLayout>
+                    <Settings />
+                  </AppLayout>
+                }
+              />
               <Route path="/" element={<Navigate to="/browse" replace />} />
             </Routes>
           </AuthenticatedTemplate>

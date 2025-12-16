@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Folder, Trash2 } from 'lucide-react';
+import { Folder, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/auth/useAuth';
@@ -64,21 +64,12 @@ export function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex-1 flex flex-col overflow-hidden">
       <div className="border-b bg-card p-4">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/browse')}
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </Button>
-          <h1 className="text-xl font-semibold">Settings</h1>
-        </div>
+        <h1 className="text-2xl font-semibold">Settings</h1>
       </div>
 
-      <div className="p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

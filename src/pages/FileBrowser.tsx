@@ -1,316 +1,81 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, File, Folder, FileText, Settings, Search, ArrowUp, ArrowDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect } from 'react';
+import { Search, ChevronDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { useDriveItems, usePrefetchFileContent } from '@/graph/hooks';
+import { FileTable } from '@/components/FileTable';
+import { useFolderContext } from '@/components/layout/FolderContext';
 import { getVaultConfig } from '@/offline/vaultConfig';
-import { db } from '@/offline/db';
-import { createSlugFromFilename } from '@/markdown/linkResolver';
-import { CacheIndicator } from '@/components/CacheIndicator';
-import type { DriveItem } from '@/graph/client';
 import type { VaultConfig } from '@/offline/db';
 
-type SortField = 'name' | 'date';
-type SortDirection = 'asc' | 'desc';
+type SortOption = 'newest' | 'oldest' | 'name-asc' | 'name-desc';
 
 export function FileBrowser() {
+  const { currentPath, setCurrentPath } = useFolderContext();
   const [vaultConfig, setVaultConfig] = useState<VaultConfig | null>(null);
-  const [currentPath, setCurrentPath] = useState('');
-  const [filter, setFilter] = useState('');
-  const [sortField, setSortField] = useState<SortField>('name');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  const navigate = useNavigate();
-  const prefetchContent = usePrefetchFileContent();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
 
   useEffect(() => {
     getVaultConfig().then(config => {
-      if (!config) {
-        navigate('/vault-picker');
-      } else {
+      if (config) {
         setVaultConfig(config);
-        setCurrentPath(config.vaultPath);
+        if (!currentPath) {
+          setCurrentPath(config.vaultPath);
+        }
       }
     });
-  }, [navigate]);
+  }, [currentPath, setCurrentPath]);
 
-  const relativePath = vaultConfig
-    ? currentPath.replace(vaultConfig.vaultPath, '').replace(/^\//, '')
-    : currentPath;
-
-  const {
-    items,
-    isLoading,
-    error,
-    refetch,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useDriveItems(currentPath);
-
-  const loadMoreTriggerRef = useRef<HTMLDivElement | null>(null);
-
-  const sortedAndFilteredItems = useMemo(() => {
-    if (!items || items.length === 0) return { folders: [], files: [] };
-
-    const filtered = items.filter(item =>
-      item.name.toLowerCase().includes(filter.toLowerCase())
-    );
-
-    const compareItems = (a: DriveItem, b: DriveItem): number => {
-      if (sortField === 'name') {
-        const comparison = a.name.localeCompare(b.name);
-        return sortDirection === 'asc' ? comparison : -comparison;
-      } else {
-        // Sort by date (lastModifiedDateTime)
-        const aDate = a.lastModifiedDateTime ? new Date(a.lastModifiedDateTime).getTime() : 0;
-        const bDate = b.lastModifiedDateTime ? new Date(b.lastModifiedDateTime).getTime() : 0;
-
-        // If either item is missing date, fallback to name comparison
-        if (aDate === 0 && bDate === 0) {
-          const comparison = a.name.localeCompare(b.name);
-          return sortDirection === 'asc' ? comparison : -comparison;
-        }
-        if (aDate === 0) return 1; // Items without date go to end
-        if (bDate === 0) return -1;
-
-        const comparison = aDate - bDate;
-        return sortDirection === 'asc' ? comparison : -comparison;
-      }
-    };
-
-    const folders = filtered.filter(item => item.folder).sort(compareItems);
-
-    const files = filtered.filter(item => item.file).sort((a, b) => {
-      // Keep markdown files first
-      const aIsMd = a.name.endsWith('.md');
-      const bIsMd = b.name.endsWith('.md');
-      if (aIsMd && !bIsMd) return -1;
-      if (!aIsMd && bIsMd) return 1;
-      // Then sort by selected field/direction
-      return compareItems(a, b);
-    });
-
-    return { folders, files };
-  }, [items, filter, sortField, sortDirection]);
-
-  useEffect(() => {
-    if (items.length > 0 && vaultConfig) {
-      items.forEach(async (item) => {
-        const itemPath = relativePath ? `${relativePath}/${item.name}` : item.name;
-        await db.files.put({
-          id: item.id,
-          driveItemId: item.id,
-          path: itemPath,
-          name: item.name,
-          eTag: item.eTag,
-          lastModified: item.lastModifiedDateTime,
-          size: item.size,
-          parentPath: relativePath || '/',
-        });
-      });
-    }
-  }, [items, vaultConfig, relativePath]);
-
-  useEffect(() => {
-    if (!hasNextPage) return;
-
-    const target = loadMoreTriggerRef.current;
-    if (!target) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      },
-      { rootMargin: '200px' }
-    );
-
-    observer.observe(target);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
-
-  const handleFolderClick = (folder: DriveItem) => {
-    const newPath = currentPath ? `${currentPath}/${folder.name}` : folder.name;
-    setCurrentPath(newPath);
+  const getFolderName = () => {
+    if (!vaultConfig || !currentPath) return 'Files';
+    if (currentPath === vaultConfig.vaultPath) return vaultConfig.vaultName;
+    const relativePath = currentPath.replace(vaultConfig.vaultPath, '').replace(/^\//, '');
+    const parts = relativePath.split('/');
+    return parts[parts.length - 1] || vaultConfig.vaultName;
   };
-
-  const handleFileClick = (file: DriveItem) => {
-    if (file.name.endsWith('.md')) {
-      const slug = createSlugFromFilename(file.name);
-      navigate(`/note/${slug}`);
-    }
-  };
-
-  const handleBack = () => {
-    if (!vaultConfig || currentPath === vaultConfig.vaultPath) return;
-
-    const pathParts = currentPath.split('/');
-    pathParts.pop();
-    setCurrentPath(pathParts.join('/'));
-  };
-
-  const isAtVaultRoot = vaultConfig && currentPath === vaultConfig.vaultPath;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b bg-card">
-        <div className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold">
-              {vaultConfig?.vaultName || 'Browse'}
-            </h1>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate('/settings')}
-            >
-              <Settings className="w-5 h-5" />
-            </Button>
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Header with search and sort */}
+      <div className="border-b border-border bg-card p-4">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <h1 className="text-2xl font-semibold text-foreground">{getFolderName()}</h1>
+        </div>
+
+        <div className="flex items-center gap-4">
+          {/* Search bar */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search files..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
           </div>
 
-          {relativePath && (
-            <div className="text-sm text-muted-foreground">
-              / {relativePath}
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Filter files..."
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <div className="flex gap-2">
-              <select
-                value={sortField}
-                onChange={(e) => setSortField(e.target.value as SortField)}
-                className="px-3 py-2 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              >
-                <option value="name">Name</option>
-                <option value="date">Date modified</option>
-              </select>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')}
-                title={`Sort ${sortDirection === 'asc' ? 'ascending' : 'descending'}`}
-              >
-                {sortDirection === 'asc' ? (
-                  <ArrowUp className="w-4 h-4" />
-                ) : (
-                  <ArrowDown className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
+          {/* Sort dropdown */}
+          <div className="relative">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="appearance-none bg-background border border-input rounded-md px-4 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
+            >
+              <option value="newest">Sort by: Newest</option>
+              <option value="oldest">Sort by: Oldest</option>
+              <option value="name-asc">Sort by: Name (A-Z)</option>
+              <option value="name-desc">Sort by: Name (Z-A)</option>
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           </div>
         </div>
       </div>
 
-      <div className="p-4">
-        {error ? (
-          <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md mb-4">
-            Error loading files. <button onClick={() => refetch()} className="underline">Retry</button>
-          </div>
-        ) : null}
-
-        {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading files...</div>
-        ) : (
-          <>
-            {!isAtVaultRoot && (
-              <button
-                onClick={handleBack}
-                className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 rounded-md transition-colors text-left mb-2"
-              >
-                <ChevronLeft className="w-5 h-5 text-muted-foreground" />
-                <span className="font-medium">Back</span>
-              </button>
-            )}
-
-            <div className="space-y-1">
-              {sortedAndFilteredItems.folders.map((folder) => (
-                <button
-                  key={folder.id}
-                  onClick={() => handleFolderClick(folder)}
-                  className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 rounded-md transition-colors text-left"
-                >
-                  <Folder className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                  <span className="flex-1 truncate">{folder.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {folder.folder?.childCount} items
-                  </span>
-                </button>
-              ))}
-
-              {sortedAndFilteredItems.files.map((file) => {
-                const isMd = file.name.endsWith('.md');
-                return (
-                  <button
-                    key={file.id}
-                    onClick={() => handleFileClick(file)}
-                    onMouseEnter={() => {
-                      // Prefetch on hover (only for markdown files)
-                      if (isMd) {
-                        prefetchContent(file.id);
-                      }
-                    }}
-                    className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 rounded-md transition-colors text-left"
-                  >
-                    {isMd ? (
-                      <FileText className="w-5 h-5 text-purple-500 flex-shrink-0" />
-                    ) : (
-                      <File className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                    )}
-                    <span className="flex-1 truncate">{file.name}</span>
-                    <div className="flex items-center gap-2">
-                      {isMd && <CacheIndicator item={file} />}
-                      {file.size && (
-                        <span className="text-xs text-muted-foreground">
-                          {(file.size / 1024).toFixed(1)} KB
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {sortedAndFilteredItems.folders.length === 0 && sortedAndFilteredItems.files.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                {filter ? 'No files match your filter' : 'This folder is empty'}
-              </div>
-            )}
-
-            {hasNextPage && (
-              <div className="mt-4 flex flex-col items-center gap-3">
-                <div ref={loadMoreTriggerRef} className="h-1 w-full" aria-hidden="true" />
-                <Button
-                  variant="outline"
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
-                >
-                  {isFetchingNextPage ? 'Loading more…' : 'Load more'}
-                </Button>
-              </div>
-            )}
-            {isFetchingNextPage && !hasNextPage && (
-              <div className="text-center py-4 text-muted-foreground">
-                Loading more files…
-              </div>
-            )}
-          </>
-        )}
-      </div>
+      {/* File table */}
+      <FileTable
+        currentPath={currentPath || vaultConfig?.vaultPath || ''}
+        searchQuery={searchQuery}
+        sortBy={sortBy}
+      />
     </div>
   );
 }
