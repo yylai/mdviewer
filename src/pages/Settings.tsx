@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Folder, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/auth/useAuth';
 import { getVaultConfig, clearVaultConfig } from '@/offline/vaultConfig';
 import type { VaultConfig } from '@/offline/db';
@@ -65,8 +66,11 @@ export function Settings() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="border-b bg-card p-4">
-        <h1 className="text-2xl font-semibold">Settings</h1>
+      <div className="border-b border-border bg-card p-4">
+        <div className="flex items-center gap-2">
+          <SidebarTrigger />
+          <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
