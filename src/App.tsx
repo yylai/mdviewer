@@ -38,7 +38,14 @@ function App() {
                   </AppLayout>
                 }
               />
-              <Route path="/note/:id" element={<NoteView />} />
+              <Route
+                path="/note/:id"
+                element={
+                  <AppLayout>
+                    <NoteView />
+                  </AppLayout>
+                }
+              />
               <Route
                 path="/settings"
                 element={

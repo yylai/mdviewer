@@ -85,12 +85,12 @@ export function NoteView() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex-1 flex flex-col overflow-hidden bg-background">
       <div className="border-b bg-card">
         <div className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <Button onClick={() => navigate(-1)} variant="ghost" size="icon">
+              <Button onClick={() => navigate('/browse')} variant="ghost" size="icon">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <h1 className="text-xl font-semibold truncate">{slug}</h1>
@@ -126,7 +126,8 @@ export function NoteView() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto p-4">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto p-4">
 
         {isLoading && (
           <div className="flex items-center justify-center py-12">
@@ -152,6 +153,7 @@ export function NoteView() {
             <>{renderedContent}</>
           </article>
         )}
+        </div>
       </div>
     </div>
   );
