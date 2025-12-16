@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Folder, Trash2 } from 'lucide-react';
+import { Folder, Trash2, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/auth/useAuth';
 import { getVaultConfig, clearVaultConfig } from '@/offline/vaultConfig';
 import type { VaultConfig } from '@/offline/db';
+import { useTheme } from '@/hooks/use-theme';
 
 function formatBytes(value?: number): string {
   if (value === undefined || value === null) return 'Unknown';
@@ -20,6 +21,7 @@ function formatBytes(value?: number): string {
 export function Settings() {
   const { account, logout } = useAuth();
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
   const [vaultConfig, setVaultConfig] = useState<VaultConfig | null>(null);
   const [storageInfo, setStorageInfo] = useState<{ usage?: number; quota?: number; error?: string }>({});
 
@@ -74,6 +76,41 @@ export function Settings() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Palette className="w-5 h-5" />
+              Appearance
+            </CardTitle>
+            <CardDescription>Choose your preferred color scheme</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setTheme('light')}
+                variant={theme === 'light' ? 'default' : 'outline'}
+                className="flex-1"
+              >
+                Light
+              </Button>
+              <Button
+                onClick={() => setTheme('dark')}
+                variant={theme === 'dark' ? 'default' : 'outline'}
+                className="flex-1"
+              >
+                Dark
+              </Button>
+              <Button
+                onClick={() => setTheme('system')}
+                variant={theme === 'system' ? 'default' : 'outline'}
+                className="flex-1"
+              >
+                System
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
