@@ -43,7 +43,6 @@ export function UserProfile() {
               <div className="text-sm font-medium text-sidebar-foreground truncate">
                 {displayName}
               </div>
-              <div className="text-xs text-sidebar-foreground/70">Free Plan</div>
             </div>
           </div>
         </SidebarMenuButton>
