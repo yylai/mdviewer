@@ -4,6 +4,7 @@ import { File, FileText, CheckCircle2, Cloud } from 'lucide-react';
 import { useDriveItems } from '@/graph/hooks';
 import { db } from '@/offline/db';
 import { createSlugFromFilename } from '@/markdown/linkResolver';
+import { extractFrontmatter } from '@/markdown';
 import { cn } from '@/lib/utils';
 import type { DriveItem } from '@/graph/client';
 
@@ -37,13 +38,48 @@ function formatSize(size?: number): string {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function extractDomain(item: DriveItem): string {
-  // For OneDrive files, we can show "onedrive" or extract from parentReference
-  if (item.parentReference?.path) {
-    // Extract domain-like info if available, otherwise show "OneDrive"
-    return 'onedrive.live.com';
+function SourceCell({ item }: { item: DriveItem }) {
+  const [domain, setDomain] = React.useState<string | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    async function loadSource() {
+      setIsLoading(true);
+      try {
+        const cached = await db.content.get(item.id);
+        if (cached?.content) {
+          const frontmatter = extractFrontmatter(cached.content);
+          if (frontmatter?.source) {
+            try {
+              const url = new URL(frontmatter.source);
+              setDomain(url.hostname);
+            } catch {
+              setDomain(null);
+            }
+          } else {
+            setDomain(null);
+          }
+        } else {
+          setDomain(null);
+        }
+      } catch {
+        setDomain(null);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadSource();
+  }, [item.id]);
+
+  if (isLoading) {
+    return <span className="text-sm text-muted-foreground">-</span>;
   }
-  return 'onedrive.live.com';
+
+  return (
+    <span className="text-sm text-muted-foreground">
+      {domain || '-'}
+    </span>
+  );
 }
 
 interface CacheStatus {
@@ -184,8 +220,8 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
                     <span className="font-medium text-foreground">{item.name}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">
-                  {extractDomain(item)}
+                <td className="px-4 py-3">
+                  <SourceCell item={item} />
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">
                   {formatDate(item.lastModifiedDateTime)}
