@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, ChevronDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 import { FileTable } from '@/components/FileTable';
 import { useFolderContext } from '@/components/layout/FolderContext';
 import { getVaultConfig } from '@/offline/vaultConfig';
@@ -38,7 +39,10 @@ export function FileBrowser() {
       {/* Header with search and sort */}
       <div className="border-b border-border bg-card p-4">
         <div className="flex items-center justify-between gap-4 mb-4">
-          <h1 className="text-2xl font-semibold text-foreground">{getFolderName()}</h1>
+          <div className="flex items-center gap-2">
+            <SidebarTrigger />
+            <h1 className="text-2xl font-semibold text-foreground">{getFolderName()}</h1>
+          </div>
         </div>
 
         <div className="flex items-center gap-4">

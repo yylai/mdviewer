@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Sidebar } from './Sidebar';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { AppSidebar } from './Sidebar';
 import { FolderProvider } from './FolderContext';
 
 interface AppLayoutProps {
@@ -9,12 +10,12 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   return (
     <FolderProvider>
-      <div className="flex h-screen overflow-hidden bg-background">
-        <Sidebar />
-        <main className="flex-1 overflow-hidden flex flex-col">
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
           {children}
-        </main>
-      </div>
+        </SidebarInset>
+      </SidebarProvider>
     </FolderProvider>
   );
 }

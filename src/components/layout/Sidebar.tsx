@@ -1,23 +1,31 @@
 import { useState, useEffect } from 'react';
-import { Folder, ChevronRight, ChevronDown } from 'lucide-react';
+import { Folder } from 'lucide-react';
 import { useDriveItems } from '@/graph/hooks';
 import { getVaultConfig } from '@/offline/vaultConfig';
 import { UserProfile } from './UserProfile';
 import { useFolderContext } from './FolderContext';
-import { cn } from '@/lib/utils';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@/components/ui/sidebar';
 import type { VaultConfig } from '@/offline/db';
 
 interface FolderNode {
   id: string;
   name: string;
   path: string;
-  expanded: boolean;
 }
 
-export function Sidebar() {
+export function AppSidebar() {
   const { currentPath, setCurrentPath } = useFolderContext();
   const [vaultConfig, setVaultConfig] = useState<VaultConfig | null>(null);
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [folderTree, setFolderTree] = useState<FolderNode[]>([]);
 
   useEffect(() => {
@@ -25,8 +33,6 @@ export function Sidebar() {
       if (config) {
         setVaultConfig(config);
         setCurrentPath(config.vaultPath);
-        // Expand root by default
-        setExpandedFolders(new Set([config.vaultPath]));
       }
     });
   }, [setCurrentPath]);
@@ -45,96 +51,73 @@ export function Sidebar() {
           id: folder.id,
           name: folder.name,
           path: folderPath,
-          expanded: expandedFolders.has(folderPath),
         };
       });
       setFolderTree(folderNodes);
     }
-  }, [vaultConfig, items, expandedFolders]);
-
-  const toggleFolder = (folderPath: string) => {
-    setExpandedFolders(prev => {
-      const next = new Set(prev);
-      if (next.has(folderPath)) {
-        next.delete(folderPath);
-      } else {
-        next.add(folderPath);
-      }
-      return next;
-    });
-  };
+  }, [vaultConfig, items]);
 
   const handleFolderClick = (folderPath: string) => {
     setCurrentPath(folderPath);
   };
 
-  const renderFolderNode = (node: FolderNode): React.ReactNode => {
-    const isExpanded = expandedFolders.has(node.path);
-    const isActive = currentPath === node.path;
-
-    return (
-      <button
-        key={node.id}
-        onClick={() => {
-          toggleFolder(node.path);
-          handleFolderClick(node.path);
-        }}
-        className={cn(
-          'w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-left',
-          'hover:bg-muted/50',
-          isActive && 'bg-primary/10 text-primary font-medium',
-          !isActive && 'text-foreground'
-        )}
-      >
-        {isExpanded ? (
-          <ChevronDown className="w-4 h-4 shrink-0" />
-        ) : (
-          <ChevronRight className="w-4 h-4 shrink-0" />
-        )}
-        <Folder className="w-4 h-4 shrink-0" />
-        <span className="truncate flex-1">{node.name}</span>
-      </button>
-    );
-  };
-
   if (!vaultConfig) {
     return (
-      <div
-        className="w-64 border-r border-border flex flex-col"
-        style={{ backgroundColor: 'hsl(var(--sidebar))' }}
-      >
-        <div className="p-4">
-          <div className="text-sm text-muted-foreground">Loading...</div>
-        </div>
-      </div>
+      <Sidebar collapsible="icon">
+        <SidebarHeader>
+          <div className="flex items-center gap-2 px-2">
+            <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
+              <span className="text-primary-foreground font-semibold text-sm">R</span>
+            </div>
+            <span className="font-semibold text-sidebar-foreground">Reader</span>
+          </div>
+        </SidebarHeader>
+        <SidebarContent>
+          <div className="p-4">
+            <div className="text-sm text-sidebar-foreground/70">Loading...</div>
+          </div>
+        </SidebarContent>
+      </Sidebar>
     );
   }
 
   return (
-    <div
-      className="w-64 border-r border-border flex flex-col h-full"
-      style={{ backgroundColor: 'hsl(var(--sidebar))' }}
-    >
-      {/* Logo/Brand area */}
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center gap-2">
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <div className="flex items-center gap-2 px-2">
           <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
             <span className="text-primary-foreground font-semibold text-sm">R</span>
           </div>
-          <span className="font-semibold text-foreground">Reader</span>
+          <span className="font-semibold text-sidebar-foreground">Reader</span>
         </div>
-      </div>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {folderTree.map((node) => {
+                const isActive = currentPath === node.path;
 
-      {/* Folders list */}
-      <div className="flex-1 overflow-y-auto p-2">
-        <div className="space-y-1">
-          {folderTree.map(node => renderFolderNode(node))}
-        </div>
-      </div>
-
-      {/* User profile at bottom */}
-      <UserProfile />
-    </div>
+                return (
+                  <SidebarMenuItem key={node.id}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      tooltip={node.name}
+                      onClick={() => handleFolderClick(node.path)}
+                    >
+                      <Folder className="w-4 h-4 shrink-0" />
+                      <span>{node.name}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter>
+        <UserProfile />
+      </SidebarFooter>
+    </Sidebar>
   );
 }
-
