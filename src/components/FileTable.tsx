@@ -121,6 +121,29 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
   const navigate = useNavigate();
   const { items, isLoading } = useDriveItems(currentPath);
 
+  // Cache file metadata to db.files for slug resolution
+  React.useEffect(() => {
+    if (items && items.length > 0) {
+      const cacheFiles = async () => {
+        for (const item of items) {
+          if (!item.folder) {
+            await db.files.put({
+              id: item.id,
+              driveItemId: item.id,
+              path: currentPath ? `${currentPath}/${item.name}` : item.name,
+              name: item.name,
+              eTag: item.eTag,
+              lastModified: item.lastModifiedDateTime,
+              size: item.size,
+              parentPath: currentPath || '/',
+            });
+          }
+        }
+      };
+      cacheFiles();
+    }
+  }, [items, currentPath]);
+
   const sortedAndFilteredItems = useMemo(() => {
     if (!items || items.length === 0) return [];
 
