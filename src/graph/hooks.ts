@@ -6,7 +6,7 @@ import {
   getDriveItem,
   type DriveItemsPage,
 } from './client';
-import { getOrFetchContent } from '@/offline/content';
+import { getCachedContent, getOrFetchContent } from '@/offline/content';
 
 export function useGraphClient() {
   const { instance } = useMsal();
@@ -46,8 +46,24 @@ export function useFileContent(itemId: string, enabled: boolean = true) {
   return useQuery({
     queryKey: ['file', 'content', itemId],
     queryFn: async () => {
-      const item = await getDriveItem(client, itemId);
-      return getOrFetchContent(client, itemId, item.eTag);
+      // Always check IndexedDB first so airplane-mode loads work.
+      const cached = await getCachedContent(itemId);
+
+      // If we're offline, do not attempt Graph/MSAL (which will fail on iOS PWAs).
+      if (cached && typeof navigator !== 'undefined' && navigator.onLine === false) {
+        return cached;
+      }
+
+      try {
+        const item = await getDriveItem(client, itemId);
+        return getOrFetchContent(client, itemId, item.eTag);
+      } catch (error) {
+        // Fall back to cached (stale) content on network/auth errors.
+        if (cached) {
+          return cached;
+        }
+        throw error;
+      }
     },
     enabled,
     retry: (failureCount, error: unknown) => {
