@@ -6,6 +6,7 @@ import { useFileContent } from '@/graph/hooks';
 import { useQueryClient } from '@tanstack/react-query';
 import { renderMarkdown, extractFrontmatter } from '@/markdown';
 import { resolveSlugToItemId } from '@/markdown/linkResolver';
+import { getCachedContent } from '@/offline/content';
 import 'katex/dist/katex.min.css';
 
 export function NoteView() {
@@ -26,13 +27,10 @@ export function NoteView() {
       resolveSlugToItemId(slug).then(id => {
         if (id) {
           setItemId(id);
-          // Check if content already exists in query cache
-          const cachedData = queryClient.getQueryData(['file', 'content', id]);
-          if (cachedData) {
-            setLoadSource('cache');
-          } else {
-            setLoadSource('network');
-          }
+          // Prefer checking persistent IndexedDB cache (not just in-memory query cache).
+          getCachedContent(id).then((cached) => {
+            setLoadSource(cached ? 'cache' : 'network');
+          });
         }
       });
     }
