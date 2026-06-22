@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "x:ingest": "node --no-warnings=ExperimentalWarning --experimental-strip-types scripts/x-ingest.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },
