@@ -1,12 +1,14 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { File, FileText, CheckCircle2, Cloud } from 'lucide-react';
+import { File, FileText, CheckCircle2, Cloud, LogIn, RefreshCw, WifiOff } from 'lucide-react';
 import { useDriveItems } from '@/graph/hooks';
+import { useAuth } from '@/auth/useAuth';
 import { db } from '@/offline/db';
 import { createSlugFromFilename } from '@/markdown/linkResolver';
 import { extractFrontmatter } from '@/markdown';
 import { cn } from '@/lib/utils';
 import type { DriveItem } from '@/graph/client';
+import { Button } from '@/components/ui/button';
 
 interface FileTableProps {
   currentPath: string;
@@ -119,7 +121,15 @@ function CacheStatusIcon({ item }: { item: DriveItem }) {
 
 export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) {
   const navigate = useNavigate();
-  const { items, isLoading } = useDriveItems(currentPath);
+  const { isAuthenticated, login } = useAuth();
+  const {
+    items,
+    isLoading,
+    isRefreshing,
+    isOnline,
+    error,
+    refetch,
+  } = useDriveItems(currentPath);
 
   // Cache file metadata to db.files for slug resolution
   React.useEffect(() => {
@@ -200,17 +210,65 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
 
   if (sortedAndFilteredItems.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-muted-foreground">
-          {searchQuery ? 'No files match your search' : 'This folder is empty'}
+      <div className="flex-1 flex flex-col items-center justify-center gap-4">
+        <div className="text-muted-foreground text-center">
+          {searchQuery
+            ? 'No files match your search'
+            : isAuthenticated
+              ? 'This folder is empty'
+              : 'No files from this folder are stored locally'}
         </div>
+        {!isAuthenticated && isOnline && (
+          <Button onClick={login} variant="outline">
+            <LogIn className="w-4 h-4" />
+            Sign in to refresh
+          </Button>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-auto">
-      <table className="w-full border-collapse">
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex items-center justify-end gap-2 border-b px-4 py-2">
+        {!isOnline && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <WifiOff className="w-3.5 h-3.5" />
+            Offline — showing downloaded files
+          </span>
+        )}
+        {error && isOnline && (
+          <span className="text-xs text-destructive">
+            Refresh failed; local files are still available.
+          </span>
+        )}
+        {isAuthenticated ? (
+          <>
+            {error && isOnline && (
+              <Button onClick={login} size="sm" variant="outline">
+                <LogIn className="w-4 h-4" />
+                Reconnect
+              </Button>
+            )}
+            <Button
+              onClick={() => refetch()}
+              size="sm"
+              variant="outline"
+              disabled={!isOnline || isRefreshing}
+            >
+              <RefreshCw className={cn('w-4 h-4', isRefreshing && 'animate-spin')} />
+              {isRefreshing ? 'Refreshing' : 'Refresh'}
+            </Button>
+          </>
+        ) : (
+          <Button onClick={login} size="sm" variant="outline" disabled={!isOnline}>
+            <LogIn className="w-4 h-4" />
+            Sign in to refresh
+          </Button>
+        )}
+      </div>
+      <div className="flex-1 overflow-auto">
+        <table className="w-full border-collapse">
         <thead className="sticky top-0 bg-card border-b border-border z-10">
           <tr>
             <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Name</th>
@@ -259,7 +317,8 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
             );
           })}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 }

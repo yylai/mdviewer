@@ -1,9 +1,10 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, Code, ExternalLink, CheckCircle2, Cloud } from 'lucide-react';
+import { ArrowLeft, Eye, Code, ExternalLink, CheckCircle2, Cloud, LogIn, RefreshCw } from 'lucide-react';
 import { useFileContent } from '@/graph/hooks';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/auth/useAuth';
 import { renderMarkdown, extractFrontmatter } from '@/markdown';
 import { resolveSlugToItemId } from '@/markdown/linkResolver';
 import { getCachedContent } from '@/offline/content';
@@ -14,13 +15,21 @@ export function NoteView() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const { isAuthenticated, login } = useAuth();
   const [itemId, setItemId] = useState<string | null>(null);
   const [renderedContent, setRenderedContent] = useState<unknown>(null);
   const [showRaw, setShowRaw] = useState(false);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const [loadSource, setLoadSource] = useState<'cache' | 'network' | null>(null);
 
-  const { data: content, isLoading, error } = useFileContent(itemId || '', !!itemId);
+  const {
+    data: content,
+    isLoading,
+    isRefreshing,
+    isOnline,
+    error,
+    refetch,
+  } = useFileContent(itemId || '', !!itemId);
 
   useEffect(() => {
     if (slug) {
@@ -114,6 +123,27 @@ export function NoteView() {
                   <a href={sourceUrl} target="_blank" rel="noopener noreferrer" title="Open original article">
                     <ExternalLink className="h-4 w-4" />
                   </a>
+                </Button>
+              )}
+              {isAuthenticated ? (
+                <Button
+                  onClick={() => refetch()}
+                  variant="ghost"
+                  size="icon"
+                  disabled={!isOnline || isRefreshing}
+                  title="Refresh from OneDrive"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </Button>
+              ) : (
+                <Button
+                  onClick={login}
+                  variant="ghost"
+                  size="icon"
+                  disabled={!isOnline}
+                  title="Sign in to refresh from OneDrive"
+                >
+                  <LogIn className="h-4 w-4" />
                 </Button>
               )}
               <Button onClick={() => setShowRaw(!showRaw)} variant="ghost" size="icon" title={showRaw ? 'Show rendered' : 'Show raw'}>

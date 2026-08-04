@@ -6,6 +6,7 @@ export interface VaultFile {
   driveItemId: string;
   path: string;
   name: string;
+  isFolder?: boolean;
   eTag?: string;
   lastModified?: string;
   size?: number;
