@@ -6,11 +6,13 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuAction,
+  useSidebar,
 } from '@/components/ui/sidebar';
 
 export function UserProfile() {
   const { account, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const displayName = account?.name || account?.username || 'Offline library';
   const initials = displayName
@@ -19,6 +21,13 @@ export function UserProfile() {
     .slice(0, 2)
     .join('')
     .toUpperCase();
+
+  const handleSettingsClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+    navigate('/settings');
+  };
 
   return (
     <SidebarMenu>
@@ -52,7 +61,7 @@ export function UserProfile() {
           </div>
         </SidebarMenuButton>
         <SidebarMenuAction
-          onClick={() => navigate('/settings')}
+          onClick={handleSettingsClick}
           title="Settings"
         >
           <Settings className="w-4 h-4" />
