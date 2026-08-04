@@ -5,6 +5,7 @@ import {
   createGraphClient,
   listDriveItems,
   getDriveItem,
+  type DriveItem,
   type DriveItemsPage,
 } from './client';
 import { getCachedContent, getOrFetchContent } from '@/offline/content';
@@ -30,11 +31,11 @@ function useOnlineStatus() {
   return isOnline;
 }
 
-async function getCachedDriveItems(path: string) {
+async function getCachedDriveItems(path: string): Promise<DriveItem[]> {
   const parentPath = path || '/';
   const files = await db.files.where('parentPath').equals(parentPath).toArray();
 
-  return files.map((file) => ({
+  return files.map<DriveItem>((file) => ({
     id: file.driveItemId,
     name: file.name,
     size: file.size,

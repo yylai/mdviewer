@@ -237,14 +237,14 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
             Offline — showing downloaded files
           </span>
         )}
-        {error && isOnline && (
+        {Boolean(error) && isOnline && (
           <span className="text-xs text-destructive">
             Refresh failed; local files are still available.
           </span>
         )}
         {isAuthenticated ? (
           <>
-            {error && isOnline && (
+            {Boolean(error) && isOnline && (
               <Button onClick={login} size="sm" variant="outline">
                 <LogIn className="w-4 h-4" />
                 Reconnect

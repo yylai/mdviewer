@@ -58,7 +58,7 @@ export function Settings() {
         try {
           const estimate = await navigator.storage.estimate();
           setStorageInfo({ usage: estimate.usage, quota: estimate.quota });
-        } catch (error) {
+        } catch {
           // Ignore errors when refreshing after clear
         }
       }
