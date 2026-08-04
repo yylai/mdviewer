@@ -19,7 +19,7 @@ function formatBytes(value?: number): string {
 }
 
 export function Settings() {
-  const { account, logout } = useAuth();
+  const { account, isAuthenticated, login, logout } = useAuth();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const [vaultConfig, setVaultConfig] = useState<VaultConfig | null>(null);
@@ -58,7 +58,7 @@ export function Settings() {
         try {
           const estimate = await navigator.storage.estimate();
           setStorageInfo({ usage: estimate.usage, quota: estimate.quota });
-        } catch (error) {
+        } catch {
           // Ignore errors when refreshing after clear
         }
       }
@@ -180,9 +180,15 @@ export function Settings() {
               <div className="text-muted-foreground">Signed in as:</div>
               <div className="font-medium">{account?.username || 'Not signed in'}</div>
             </div>
-            <Button onClick={logout} variant="destructive" className="w-full">
-              Sign Out
-            </Button>
+            {isAuthenticated ? (
+              <Button onClick={logout} variant="destructive" className="w-full">
+                Sign Out
+              </Button>
+            ) : (
+              <Button onClick={login} className="w-full" disabled={!navigator.onLine}>
+                Sign in to refresh OneDrive
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>

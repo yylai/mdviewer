@@ -9,10 +9,10 @@ import {
 } from '@/components/ui/sidebar';
 
 export function UserProfile() {
-  const { account } = useAuth();
+  const { account, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const displayName = account?.name || account?.username || 'User';
+  const displayName = account?.name || account?.username || 'Offline library';
   const initials = displayName
     .split(' ')
     .map(n => n[0])
@@ -43,6 +43,11 @@ export function UserProfile() {
               <div className="text-sm font-medium text-sidebar-foreground truncate">
                 {displayName}
               </div>
+              {!isAuthenticated && (
+                <div className="text-xs text-sidebar-foreground/70 truncate">
+                  Local files only
+                </div>
+              )}
             </div>
           </div>
         </SidebarMenuButton>

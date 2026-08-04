@@ -34,6 +34,14 @@ export function FileBrowser() {
     return parts[parts.length - 1] || vaultConfig.vaultName;
   };
 
+  if (!vaultConfig) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-muted-foreground">Loading local vault...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header with search and sort */}

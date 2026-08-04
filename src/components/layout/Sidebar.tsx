@@ -40,7 +40,7 @@ export function AppSidebar() {
   }, [setCurrentPath]);
 
   // Fetch folders from vault root to build the tree
-  const { items } = useDriveItems(vaultConfig?.vaultPath || '');
+  const { items } = useDriveItems(vaultConfig?.vaultPath || '', Boolean(vaultConfig));
 
   useEffect(() => {
     if (vaultConfig && items.length > 0) {
