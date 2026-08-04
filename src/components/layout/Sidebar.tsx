@@ -15,6 +15,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import type { VaultConfig } from '@/offline/db';
 
@@ -26,6 +27,7 @@ interface FolderNode {
 
 export function AppSidebar() {
   const navigate = useNavigate();
+  const { isMobile, setOpenMobile } = useSidebar();
   const { currentPath, setCurrentPath } = useFolderContext();
   const [vaultConfig, setVaultConfig] = useState<VaultConfig | null>(null);
   const [folderTree, setFolderTree] = useState<FolderNode[]>([]);
@@ -61,6 +63,9 @@ export function AppSidebar() {
 
   const handleFolderClick = (folderPath: string) => {
     setCurrentPath(folderPath);
+    if (isMobile) {
+      setOpenMobile(false);
+    }
     navigate('/browse');
   };
 
