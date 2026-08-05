@@ -1,14 +1,26 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { File, FileText, CheckCircle2, Cloud, LogIn, RefreshCw, WifiOff } from 'lucide-react';
-import { useDriveItems } from '@/graph/hooks';
+import {
+  File,
+  FileText,
+  CheckCircle2,
+  Cloud,
+  LogIn,
+  RefreshCw,
+  WifiOff,
+  Download,
+} from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useDriveItems, useGraphClient } from '@/graph/hooks';
 import { useAuth } from '@/auth/useAuth';
 import { db } from '@/offline/db';
+import { downloadFilesForOffline } from '@/offline/content';
 import { createSlugFromFilename } from '@/markdown/linkResolver';
 import { extractFrontmatter } from '@/markdown';
 import { cn } from '@/lib/utils';
 import type { DriveItem } from '@/graph/client';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface FileTableProps {
   currentPath: string;
@@ -40,7 +52,11 @@ function formatSize(size?: number): string {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function SourceCell({ item }: { item: DriveItem }) {
+function isMarkdownFile(item: DriveItem): boolean {
+  return item.name.toLowerCase().endsWith('.md');
+}
+
+function SourceCell({ item, refreshKey }: { item: DriveItem; refreshKey: number }) {
   const [domain, setDomain] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
@@ -71,7 +87,7 @@ function SourceCell({ item }: { item: DriveItem }) {
       }
     }
     loadSource();
-  }, [item.id]);
+  }, [item.id, refreshKey]);
 
   if (isLoading) {
     return <span className="text-sm text-muted-foreground">-</span>;
@@ -89,11 +105,12 @@ interface CacheStatus {
   checking: boolean;
 }
 
-function CacheStatusIcon({ item }: { item: DriveItem }) {
+function CacheStatusIcon({ item, refreshKey }: { item: DriveItem; refreshKey: number }) {
   const [status, setStatus] = React.useState<CacheStatus>({ cached: false, checking: true });
 
   React.useEffect(() => {
     async function checkCache() {
+      setStatus({ cached: false, checking: true });
       const cached = await db.content.get(item.id);
       if (cached && item.eTag && cached.eTag === item.eTag) {
         setStatus({ cached: true, checking: false });
@@ -102,7 +119,7 @@ function CacheStatusIcon({ item }: { item: DriveItem }) {
       }
     }
     checkCache();
-  }, [item.id, item.eTag]);
+  }, [item.id, item.eTag, refreshKey]);
 
   if (status.checking) {
     return <div className="w-4 h-4" />;
@@ -122,6 +139,8 @@ function CacheStatusIcon({ item }: { item: DriveItem }) {
 export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) {
   const navigate = useNavigate();
   const { isAuthenticated, login } = useAuth();
+  const client = useGraphClient();
+  const queryClient = useQueryClient();
   const {
     items,
     isLoading,
@@ -130,6 +149,22 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
     error,
     refetch,
   } = useDriveItems(currentPath);
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<{
+    completed: number;
+    total: number;
+  } | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [cacheRefreshKey, setCacheRefreshKey] = useState(0);
+
+  // Clear selection when navigating to a different folder
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setDownloadError(null);
+    setDownloadProgress(null);
+  }, [currentPath]);
 
   // Cache file metadata to db.files for slug resolution
   React.useEffect(() => {
@@ -193,10 +228,99 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
     return sorted;
   }, [items, searchQuery, sortBy]);
 
+  const selectableItems = useMemo(
+    () => sortedAndFilteredItems.filter(isMarkdownFile),
+    [sortedAndFilteredItems]
+  );
+
+  const selectedCount = selectedIds.size;
+  const allSelectableSelected =
+    selectableItems.length > 0 &&
+    selectableItems.every((item) => selectedIds.has(item.id));
+  const someSelectableSelected =
+    selectableItems.some((item) => selectedIds.has(item.id)) &&
+    !allSelectableSelected;
+
   const handleFileClick = (file: DriveItem) => {
-    if (file.name.endsWith('.md')) {
+    if (isMarkdownFile(file)) {
       const slug = createSlugFromFilename(file.name);
       navigate(`/note/${slug}`);
+    }
+  };
+
+  const toggleSelection = (itemId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (allSelectableSelected) {
+      setSelectedIds(new Set());
+      return;
+    }
+    setSelectedIds(new Set(selectableItems.map((item) => item.id)));
+  };
+
+  const handleDownloadSelected = async () => {
+    if (selectedCount === 0 || isDownloading || !isAuthenticated || !isOnline) {
+      return;
+    }
+
+    const selectedItems = selectableItems.filter((item) => selectedIds.has(item.id));
+    if (selectedItems.length === 0) {
+      return;
+    }
+
+    setIsDownloading(true);
+    setDownloadError(null);
+    setDownloadProgress({ completed: 0, total: selectedItems.length });
+
+    try {
+      const result = await downloadFilesForOffline(
+        client,
+        selectedItems.map((item) => ({ id: item.id, eTag: item.eTag })),
+        {
+          concurrency: 3,
+          onProgress: (completed, total) => {
+            setDownloadProgress({ completed, total });
+          },
+        }
+      );
+
+      for (const id of result.succeeded) {
+        const cached = await db.content.get(id);
+        if (cached?.content) {
+          queryClient.setQueryData(['file', 'cached-content', id], cached.content);
+          queryClient.setQueryData(['file', 'content', id], cached.content);
+        }
+      }
+
+      setCacheRefreshKey((key) => key + 1);
+
+      if (result.failed.length > 0 && result.succeeded.length === 0) {
+        setDownloadError('Failed to download selected files. Try again.');
+      } else if (result.failed.length > 0) {
+        setDownloadError(
+          `Downloaded ${result.succeeded.length} of ${selectedItems.length} files. Some failed.`
+        );
+        setSelectedIds(new Set(result.failed.map((entry) => entry.id)));
+      } else {
+        setSelectedIds(new Set());
+        setDownloadError(null);
+      }
+    } catch (err) {
+      console.error('Bulk download failed:', err);
+      setDownloadError('Failed to download selected files. Try again.');
+    } finally {
+      setIsDownloading(false);
+      setDownloadProgress(null);
     }
   };
 
@@ -230,47 +354,88 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="flex items-center justify-end gap-2 border-b px-4 py-2">
-        {!isOnline && (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <WifiOff className="w-3.5 h-3.5" />
-            Offline — showing downloaded files
-          </span>
-        )}
-        {Boolean(error) && isOnline && (
-          <span className="text-xs text-destructive">
-            Refresh failed; local files are still available.
-          </span>
-        )}
-        {isAuthenticated ? (
-          <>
-            {Boolean(error) && isOnline && (
-              <Button onClick={login} size="sm" variant="outline">
-                <LogIn className="w-4 h-4" />
-                Reconnect
+      <div className="flex items-center justify-between gap-2 border-b px-4 py-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {selectedCount > 0 && (
+            <>
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
+                {selectedCount} selected
+              </span>
+              <Button
+                onClick={handleDownloadSelected}
+                size="sm"
+                disabled={!isAuthenticated || !isOnline || isDownloading}
+              >
+                <Download className={cn('w-4 h-4', isDownloading && 'animate-pulse')} />
+                {isDownloading && downloadProgress
+                  ? `Downloading ${downloadProgress.completed}/${downloadProgress.total}`
+                  : `Download${selectedCount > 1 ? ` ${selectedCount}` : ''}`}
               </Button>
-            )}
-            <Button
-              onClick={() => refetch()}
-              size="sm"
-              variant="outline"
-              disabled={!isOnline || isRefreshing}
-            >
-              <RefreshCw className={cn('w-4 h-4', isRefreshing && 'animate-spin')} />
-              {isRefreshing ? 'Refreshing' : 'Refresh'}
+              <Button
+                onClick={() => setSelectedIds(new Set())}
+                size="sm"
+                variant="ghost"
+                disabled={isDownloading}
+              >
+                Clear
+              </Button>
+            </>
+          )}
+          {downloadError && (
+            <span className="text-xs text-destructive truncate">{downloadError}</span>
+          )}
+        </div>
+        <div className="flex items-center justify-end gap-2 shrink-0">
+          {!isOnline && (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <WifiOff className="w-3.5 h-3.5" />
+              Offline — showing downloaded files
+            </span>
+          )}
+          {Boolean(error) && isOnline && (
+            <span className="text-xs text-destructive">
+              Refresh failed; local files are still available.
+            </span>
+          )}
+          {isAuthenticated ? (
+            <>
+              {Boolean(error) && isOnline && (
+                <Button onClick={login} size="sm" variant="outline">
+                  <LogIn className="w-4 h-4" />
+                  Reconnect
+                </Button>
+              )}
+              <Button
+                onClick={() => refetch()}
+                size="sm"
+                variant="outline"
+                disabled={!isOnline || isRefreshing || isDownloading}
+              >
+                <RefreshCw className={cn('w-4 h-4', isRefreshing && 'animate-spin')} />
+                {isRefreshing ? 'Refreshing' : 'Refresh'}
+              </Button>
+            </>
+          ) : (
+            <Button onClick={login} size="sm" variant="outline" disabled={!isOnline}>
+              <LogIn className="w-4 h-4" />
+              Sign in to refresh
             </Button>
-          </>
-        ) : (
-          <Button onClick={login} size="sm" variant="outline" disabled={!isOnline}>
-            <LogIn className="w-4 h-4" />
-            Sign in to refresh
-          </Button>
-        )}
+          )}
+        </div>
       </div>
       <div className="flex-1 overflow-auto">
         <table className="w-full border-collapse">
         <thead className="sticky top-0 bg-card border-b border-border z-10">
           <tr>
+            <th className="w-10 px-4 py-3">
+              <Checkbox
+                checked={allSelectableSelected}
+                indeterminate={someSelectableSelected}
+                onChange={toggleSelectAll}
+                disabled={selectableItems.length === 0 || isDownloading}
+                aria-label="Select all markdown files"
+              />
+            </th>
             <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Name</th>
             <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Source</th>
             <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Date Modified</th>
@@ -280,17 +445,31 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
         </thead>
         <tbody>
           {sortedAndFilteredItems.map((item) => {
-            const isMd = item.name.endsWith('.md');
+            const isMd = isMarkdownFile(item);
+            const isSelected = selectedIds.has(item.id);
 
             return (
               <tr
                 key={item.id}
                 className={cn(
                   'border-b border-border hover:bg-muted/50 transition-colors',
-                  isMd && 'cursor-pointer'
+                  isMd && 'cursor-pointer',
+                  isSelected && 'bg-muted/40'
                 )}
                 onClick={() => handleFileClick(item)}
               >
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  {isMd ? (
+                    <Checkbox
+                      checked={isSelected}
+                      onChange={() => toggleSelection(item.id)}
+                      disabled={isDownloading}
+                      aria-label={`Select ${item.name}`}
+                    />
+                  ) : (
+                    <div className="size-4" />
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     {isMd ? (
@@ -302,7 +481,7 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <SourceCell item={item} />
+                  <SourceCell item={item} refreshKey={cacheRefreshKey} />
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">
                   {formatDate(item.lastModifiedDateTime)}
@@ -311,7 +490,7 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
                   {formatSize(item.size)}
                 </td>
                 <td className="px-4 py-3">
-                  <CacheStatusIcon item={item} />
+                  <CacheStatusIcon item={item} refreshKey={cacheRefreshKey} />
                 </td>
               </tr>
             );
@@ -322,4 +501,3 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
     </div>
   );
 }
-

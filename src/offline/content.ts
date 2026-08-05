@@ -43,6 +43,52 @@ export async function getCachedContent(driveItemId: string): Promise<string | nu
   return cached?.content || null;
 }
 
+export interface DownloadFilesResult {
+  succeeded: string[];
+  failed: Array<{ id: string; error: unknown }>;
+}
+
+/**
+ * Download and cache markdown file content for offline use.
+ * Processes with limited concurrency to avoid Graph API throttling.
+ */
+export async function downloadFilesForOffline(
+  client: Client,
+  items: Array<{ id: string; eTag?: string }>,
+  options: {
+    concurrency?: number;
+    onProgress?: (completed: number, total: number) => void;
+  } = {}
+): Promise<DownloadFilesResult> {
+  const { concurrency = 3, onProgress } = options;
+  const succeeded: string[] = [];
+  const failed: Array<{ id: string; error: unknown }> = [];
+  let completed = 0;
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      const item = items[index];
+      try {
+        await getOrFetchContent(client, item.id, item.eTag);
+        succeeded.push(item.id);
+      } catch (error) {
+        failed.push({ id: item.id, error });
+      } finally {
+        completed += 1;
+        onProgress?.(completed, items.length);
+      }
+    }
+  }
+
+  const workerCount = Math.min(concurrency, Math.max(items.length, 0));
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+
+  return { succeeded, failed };
+}
+
 export async function downloadAndCacheAttachment(
   client: Client,
   driveItemId: string,
