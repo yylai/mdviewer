@@ -7,7 +7,9 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  color-scheme: light dark;
+  /* Match the rendered theme so Safari form controls aren't painted for dark mode
+     while the app UI is light (unchecked checkboxes become solid black otherwise). */
+  color-scheme: light;
 
   /* Theme tokens (shadcn/ui neutral base) */
   --background: 0 0% 100%;
@@ -62,8 +64,7 @@ html, body, #root {
   padding: 0;
   height: 100%;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  /* Ensure Safari respects the chosen scheme for form controls, etc. */
-  color-scheme: light dark;
+  color-scheme: light;
 }
 
 body {
@@ -101,6 +102,20 @@ button {
   background-color: hsl(var(--sidebar));
 }
 
+/* Custom checkbox icons (native accent styling is unreliable on iOS Safari) */
+[data-slot="checkbox"]:checked,
+[data-slot="checkbox"]:indeterminate {
+  background-size: 100% 100%;
+}
+
+[data-slot="checkbox"]:checked {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3.5 8.5 6.5 11.5 12.5 4.5' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+[data-slot="checkbox"]:indeterminate {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 8h8' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
 /* Table styling */
 table {
   border-collapse: separate;
@@ -127,6 +142,8 @@ table tbody tr:last-child td {
 }
 
 .dark {
+  color-scheme: dark;
+
   --background: 222.2 84% 4.9%;
   --foreground: 210 40% 98%;
 

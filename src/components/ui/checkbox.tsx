@@ -31,8 +31,13 @@ function Checkbox({
         }
       }}
       className={cn(
-        "size-4 shrink-0 rounded border border-input bg-background text-primary shadow-xs",
-        "accent-primary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        // appearance-none prevents iOS Safari from painting a solid dark fill
+        // when color-scheme includes dark and the app UI is light.
+        "size-4 shrink-0 appearance-none rounded-[4px] border shadow-xs",
+        "border-[hsl(var(--input))] bg-[hsl(var(--background))] bg-center bg-no-repeat",
+        "checked:border-[hsl(var(--primary))] checked:bg-[hsl(var(--primary))]",
+        "indeterminate:border-[hsl(var(--primary))] indeterminate:bg-[hsl(var(--primary))]",
+        "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[hsl(var(--ring)/0.5)]",
         "disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
