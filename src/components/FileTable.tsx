@@ -353,77 +353,45 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between gap-2 border-b px-4 py-2">
-        <div className="flex items-center gap-2 min-w-0">
-          {selectedCount > 0 && (
-            <>
-              <span className="text-sm text-muted-foreground whitespace-nowrap">
-                {selectedCount} selected
-              </span>
-              <Button
-                onClick={handleDownloadSelected}
-                size="sm"
-                disabled={!isAuthenticated || !isOnline || isDownloading}
-              >
-                <Download className={cn('w-4 h-4', isDownloading && 'animate-pulse')} />
-                {isDownloading && downloadProgress
-                  ? `Downloading ${downloadProgress.completed}/${downloadProgress.total}`
-                  : `Download${selectedCount > 1 ? ` ${selectedCount}` : ''}`}
+    <div className="relative flex-1 flex flex-col overflow-hidden">
+      <div className="flex items-center justify-end gap-2 border-b px-4 py-2">
+        {!isOnline && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <WifiOff className="w-3.5 h-3.5" />
+            Offline — showing downloaded files
+          </span>
+        )}
+        {Boolean(error) && isOnline && (
+          <span className="text-xs text-destructive">
+            Refresh failed; local files are still available.
+          </span>
+        )}
+        {isAuthenticated ? (
+          <>
+            {Boolean(error) && isOnline && (
+              <Button onClick={login} size="sm" variant="outline">
+                <LogIn className="w-4 h-4" />
+                Reconnect
               </Button>
-              <Button
-                onClick={() => setSelectedIds(new Set())}
-                size="sm"
-                variant="ghost"
-                disabled={isDownloading}
-              >
-                Clear
-              </Button>
-            </>
-          )}
-          {downloadError && (
-            <span className="text-xs text-destructive truncate">{downloadError}</span>
-          )}
-        </div>
-        <div className="flex items-center justify-end gap-2 shrink-0">
-          {!isOnline && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <WifiOff className="w-3.5 h-3.5" />
-              Offline — showing downloaded files
-            </span>
-          )}
-          {Boolean(error) && isOnline && (
-            <span className="text-xs text-destructive">
-              Refresh failed; local files are still available.
-            </span>
-          )}
-          {isAuthenticated ? (
-            <>
-              {Boolean(error) && isOnline && (
-                <Button onClick={login} size="sm" variant="outline">
-                  <LogIn className="w-4 h-4" />
-                  Reconnect
-                </Button>
-              )}
-              <Button
-                onClick={() => refetch()}
-                size="sm"
-                variant="outline"
-                disabled={!isOnline || isRefreshing || isDownloading}
-              >
-                <RefreshCw className={cn('w-4 h-4', isRefreshing && 'animate-spin')} />
-                {isRefreshing ? 'Refreshing' : 'Refresh'}
-              </Button>
-            </>
-          ) : (
-            <Button onClick={login} size="sm" variant="outline" disabled={!isOnline}>
-              <LogIn className="w-4 h-4" />
-              Sign in to refresh
+            )}
+            <Button
+              onClick={() => refetch()}
+              size="sm"
+              variant="outline"
+              disabled={!isOnline || isRefreshing || isDownloading}
+            >
+              <RefreshCw className={cn('w-4 h-4', isRefreshing && 'animate-spin')} />
+              {isRefreshing ? 'Refreshing' : 'Refresh'}
             </Button>
-          )}
-        </div>
+          </>
+        ) : (
+          <Button onClick={login} size="sm" variant="outline" disabled={!isOnline}>
+            <LogIn className="w-4 h-4" />
+            Sign in to refresh
+          </Button>
+        )}
       </div>
-      <div className="flex-1 overflow-auto">
+      <div className={cn('flex-1 overflow-auto', selectedCount > 0 && 'pb-24')}>
         <table className="w-full border-collapse">
         <thead className="sticky top-0 bg-card border-b border-border z-10">
           <tr>
@@ -498,6 +466,46 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
         </tbody>
         </table>
       </div>
+
+      {selectedCount > 0 && (
+        <div
+          className="absolute inset-x-0 bottom-0 z-50 border-t border-border bg-card/95 backdrop-blur-sm px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgba(0,0,0,0.08)]"
+          role="toolbar"
+          aria-label="Bulk file actions"
+        >
+          <div className="flex w-full items-center gap-3">
+            <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">
+              {selectedCount} selected
+            </span>
+            <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
+              <Button
+                onClick={() => {
+                  setSelectedIds(new Set());
+                  setDownloadError(null);
+                }}
+                size="sm"
+                variant="ghost"
+                disabled={isDownloading}
+              >
+                Clear
+              </Button>
+              <Button
+                onClick={handleDownloadSelected}
+                size="sm"
+                disabled={!isAuthenticated || !isOnline || isDownloading}
+              >
+                <Download className={cn('w-4 h-4', isDownloading && 'animate-pulse')} />
+                {isDownloading && downloadProgress
+                  ? `Downloading ${downloadProgress.completed}/${downloadProgress.total}`
+                  : `Download${selectedCount > 1 ? ` ${selectedCount}` : ''}`}
+              </Button>
+            </div>
+          </div>
+          {downloadError && (
+            <p className="mt-2 text-xs text-destructive">{downloadError}</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
