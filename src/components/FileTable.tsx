@@ -353,7 +353,7 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="relative flex-1 flex flex-col overflow-hidden">
       <div className="flex items-center justify-end gap-2 border-b px-4 py-2">
         {!isOnline && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -469,11 +469,11 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
 
       {selectedCount > 0 && (
         <div
-          className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card/95 backdrop-blur-sm px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgba(0,0,0,0.08)]"
+          className="absolute inset-x-0 bottom-0 z-50 border-t border-border bg-card/95 backdrop-blur-sm px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgba(0,0,0,0.08)]"
           role="toolbar"
           aria-label="Bulk file actions"
         >
-          <div className="mx-auto flex w-full max-w-3xl items-center gap-3">
+          <div className="flex w-full items-center gap-3">
             <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">
               {selectedCount} selected
             </span>
@@ -502,7 +502,7 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
             </div>
           </div>
           {downloadError && (
-            <p className="mx-auto mt-2 max-w-3xl text-xs text-destructive">{downloadError}</p>
+            <p className="mt-2 text-xs text-destructive">{downloadError}</p>
           )}
         </div>
       )}
