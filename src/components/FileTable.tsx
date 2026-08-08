@@ -9,6 +9,7 @@ import {
   RefreshCw,
   WifiOff,
   Download,
+  Loader2,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDriveItems, useGraphClient } from '@/graph/hooks';
@@ -404,11 +405,13 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
                 aria-label="Select all markdown files"
               />
             </th>
+            <th className="w-10 px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+              <span className="sr-only">Cached</span>
+            </th>
             <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Name</th>
             <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Source</th>
             <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Date Modified</th>
             <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Size</th>
-            <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Cached</th>
           </tr>
         </thead>
         <tbody>
@@ -439,6 +442,9 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
                   )}
                 </td>
                 <td className="px-4 py-3">
+                  <CacheStatusIcon item={item} refreshKey={cacheRefreshKey} />
+                </td>
+                <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     {isMd ? (
                       <FileText className="w-5 h-5 text-purple-500 shrink-0" />
@@ -456,9 +462,6 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">
                   {formatSize(item.size)}
-                </td>
-                <td className="px-4 py-3">
-                  <CacheStatusIcon item={item} refreshKey={cacheRefreshKey} />
                 </td>
               </tr>
             );
@@ -478,27 +481,37 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
               {selectedCount} selected
             </span>
             <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
-              <Button
-                onClick={() => {
-                  setSelectedIds(new Set());
-                  setDownloadError(null);
-                }}
-                size="sm"
-                variant="ghost"
-                disabled={isDownloading}
-              >
-                Clear
-              </Button>
-              <Button
-                onClick={handleDownloadSelected}
-                size="sm"
-                disabled={!isAuthenticated || !isOnline || isDownloading}
-              >
-                <Download className={cn('w-4 h-4', isDownloading && 'animate-pulse')} />
-                {isDownloading && downloadProgress
-                  ? `Downloading ${downloadProgress.completed}/${downloadProgress.total}`
-                  : `Download${selectedCount > 1 ? ` ${selectedCount}` : ''}`}
-              </Button>
+              {isDownloading && downloadProgress ? (
+                <span
+                  className="inline-flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap"
+                  aria-live="polite"
+                  aria-busy="true"
+                >
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0" aria-hidden="true" />
+                  Downloading {downloadProgress.completed}/{downloadProgress.total}
+                </span>
+              ) : (
+                <>
+                  <Button
+                    onClick={() => {
+                      setSelectedIds(new Set());
+                      setDownloadError(null);
+                    }}
+                    size="sm"
+                    variant="ghost"
+                  >
+                    Clear
+                  </Button>
+                  <Button
+                    onClick={handleDownloadSelected}
+                    size="sm"
+                    disabled={!isAuthenticated || !isOnline}
+                  >
+                    <Download className="w-4 h-4" />
+                    {`Download${selectedCount > 1 ? ` ${selectedCount}` : ''}`}
+                  </Button>
+                </>
+              )}
             </div>
           </div>
           {downloadError && (
