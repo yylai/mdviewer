@@ -10,9 +10,9 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   return (
     <FolderProvider>
-      <SidebarProvider>
+      <SidebarProvider className="h-dvh min-h-0 overflow-hidden">
         <AppSidebar />
-        <SidebarInset>
+        <SidebarInset className="min-h-0 overflow-hidden">
           {children}
         </SidebarInset>
       </SidebarProvider>
