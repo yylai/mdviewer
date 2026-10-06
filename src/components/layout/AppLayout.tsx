@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { InstallHint } from '@/components/InstallHint';
 import { AppSidebar } from './Sidebar';
 import { FolderProvider } from './FolderContext';
 
@@ -14,6 +15,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <AppSidebar />
         <SidebarInset className="min-h-0 overflow-hidden">
           {children}
+          <InstallHint />
         </SidebarInset>
       </SidebarProvider>
     </FolderProvider>
