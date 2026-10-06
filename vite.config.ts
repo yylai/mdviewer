@@ -48,19 +48,6 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: 'index.html',
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/graph\.microsoft\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'graph-api-cache',
-              networkTimeoutSeconds: 10,
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
-        ]
       }
     })
   ],

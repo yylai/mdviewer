@@ -1,5 +1,6 @@
 import { useMsal } from '@azure/msal-react';
 import { loginRequest } from './msalConfig';
+import { clearVaultConfig } from '@/offline/vaultConfig';
 
 export function useAuth() {
   const { instance, accounts } = useMsal();
@@ -15,6 +16,7 @@ export function useAuth() {
 
   const logout = async () => {
     try {
+      await clearVaultConfig();
       await instance.logoutRedirect({
         account: accounts[0],
       });
