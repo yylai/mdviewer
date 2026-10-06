@@ -12,6 +12,7 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeReact from 'rehype-react';
 import * as prod from 'react/jsx-runtime';
 import yaml from 'js-yaml';
+import { slug as headingSlug } from 'github-slugger';
 import rehypeTrimCode from './rehype-trim-code';
 
 const sanitizeSchema = {
@@ -50,6 +51,26 @@ const sanitizeSchema = {
     'mtext',
     'annotation',
   ],
+  clobberPrefix: '',
+};
+
+function wikiPermalink(name: string): string {
+  const hashAt = name.indexOf('#');
+  const page = (hashAt === -1 ? name : name.slice(0, hashAt)).replace(/ /g, '-').toLowerCase();
+  if (hashAt === -1) return page;
+  return `${page}#${headingSlug(name.slice(hashAt + 1))}`;
+}
+
+function wikiHref(permalink: string): string {
+  const hashAt = permalink.indexOf('#');
+  if (hashAt === -1) return `#/note/${permalink}`;
+  return `#/note/${permalink.slice(0, hashAt)}#${permalink.slice(hashAt + 1)}`;
+}
+
+const wikiLinkOptions = {
+  aliasDivider: '|',
+  pageResolver: (name: string) => [wikiPermalink(name)],
+  hrefTemplate: (permalink: string) => wikiHref(permalink),
 };
 
 export function extractFrontmatter(content: string): { source?: string } | null {
@@ -68,23 +89,7 @@ export async function renderMarkdown(content: string) {
     .use(remarkGfm)
     .use(remarkFrontmatter, ['yaml'])
     .use(remarkMath)
-    .use(remarkWikiLink, {
-      pageResolver: (name: string) => {
-        const slug = name
-          .split('#')[0]
-          .replace(/ /g, '-')
-          .toLowerCase();
-        return [slug];
-      },
-      hrefTemplate: (permalink: string) => {
-        const fullLink = permalink;
-        if (fullLink.includes('#')) {
-          const [slug, anchor] = fullLink.split('#');
-          return `#/note/${slug}#${anchor}`;
-        }
-        return `#/note/${permalink}`;
-      },
-    })
+    .use(remarkWikiLink, wikiLinkOptions)
     .use(remarkRehype)
     .use(rehypeSlug)
     .use(rehypeKatex)
