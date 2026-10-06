@@ -1,6 +1,6 @@
 import { isValidElement, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
-import { renderMarkdown } from './index';
+import { extractFrontmatter, renderMarkdown } from './index';
 import { resolveLocalWikiTarget, resolveWikiTarget } from './noteIdentity';
 
 function textContent(node: ReactNode): string {
@@ -57,6 +57,20 @@ describe('markdown pipeline', () => {
     const code = elements(result, 'code')[0];
 
     expect(textContent(code.props.children)).toBe('alpha\n\nbeta');
+  });
+});
+
+describe('frontmatter source', () => {
+  it('allows only http and https source links', () => {
+    const https = extractFrontmatter('---\nsource: https://example.com/a\n---\n');
+    const http = extractFrontmatter('---\nsource: http://example.com/a\n---\n');
+    const script = extractFrontmatter('---\nsource: javascript:alert(1)\n---\n');
+    const data = extractFrontmatter('---\nsource: data:text/html,hi\n---\n');
+
+    expect(https?.source).toBe('https://example.com/a');
+    expect(http?.source).toBe('http://example.com/a');
+    expect(script?.source).toBeUndefined();
+    expect(data?.source).toBeUndefined();
   });
 });
 

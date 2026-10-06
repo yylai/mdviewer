@@ -24,6 +24,7 @@ export function NoteView() {
   const [resolvedTarget, setResolvedTarget] = useState<string | null>(null);
   const [title, setTitle] = useState('Note');
   const [renderedContent, setRenderedContent] = useState<unknown>(null);
+  const [renderError, setRenderError] = useState<string | null>(null);
   const [showRaw, setShowRaw] = useState(false);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const [loadSource, setLoadSource] = useState<'cache' | 'network' | null>(null);
@@ -90,13 +91,31 @@ export function NoteView() {
   }, [itemId]);
 
   useEffect(() => {
-    if (content) {
-      const frontmatter = extractFrontmatter(content);
-      setSourceUrl(frontmatter?.source || null);
-      renderMarkdown(content).then(result => {
-        setRenderedContent(result);
-      });
+    if (!content) {
+      setRenderedContent(null);
+      setRenderError(null);
+      setSourceUrl(null);
+      return;
     }
+
+    let cancelled = false;
+    setRenderedContent(null);
+    setRenderError(null);
+    setSourceUrl(extractFrontmatter(content)?.source || null);
+    renderMarkdown(content).then(
+      (result) => {
+        if (!cancelled) setRenderedContent(result);
+      },
+      (renderFailure: unknown) => {
+        if (cancelled) return;
+        setRenderedContent(null);
+        setRenderError(renderFailure instanceof Error ? renderFailure.message : 'Could not render this note');
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
   }, [content]);
 
   useEffect(() => {
@@ -224,7 +243,12 @@ export function NoteView() {
           </div>
         )}
 
-        {showRaw ? (
+        {renderError ? (
+          <div className="p-4 border border-destructive rounded-md">
+            <p className="text-destructive">Could not render this note</p>
+            <p className="text-sm text-muted-foreground mt-2">{renderError}</p>
+          </div>
+        ) : showRaw ? (
           <pre className="bg-muted p-4 rounded-md overflow-auto text-sm">
             <code>{content}</code>
           </pre>
