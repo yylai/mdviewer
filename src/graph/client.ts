@@ -1,6 +1,5 @@
 import { Client, ResponseType } from '@microsoft/microsoft-graph-client';
 import type { IPublicClientApplication } from '@azure/msal-browser';
-import 'isomorphic-fetch';
 
 export function createGraphClient(msalInstance: IPublicClientApplication) {
   return Client.init({

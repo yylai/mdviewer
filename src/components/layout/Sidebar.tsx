@@ -4,7 +4,7 @@ import { ChevronRight, Folder, HardDrive, MoveUp } from 'lucide-react';
 import { useDriveItems } from '@/graph/hooks';
 import { useVaultConfig } from '@/offline/useVaultConfig';
 import { UserProfile } from './UserProfile';
-import { useFolderContext } from './FolderContext';
+import { useFolderContext } from './useFolderContext';
 import {
   Sidebar,
   SidebarContent,
@@ -15,8 +15,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from '@/components/ui/sidebar';
+import { useSidebar } from '@/components/ui/use-sidebar';
 
 interface FolderNode {
   id: string;

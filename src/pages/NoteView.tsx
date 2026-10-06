@@ -6,7 +6,8 @@ import { ArrowLeft, Eye, Code, ExternalLink, CheckCircle2, Cloud, LogIn, Refresh
 import { useFileContent } from '@/graph/hooks';
 import { createGraphClient, getDriveItemByPath, searchDriveFiles } from '@/graph/client';
 import { useAuth } from '@/auth/useAuth';
-import { renderMarkdown, extractFrontmatter } from '@/markdown';
+import { renderMarkdown } from '@/markdown';
+import { extractFrontmatter } from '@/markdown/frontmatter';
 import { resolveStoredWikiTarget } from '@/markdown/linkResolver';
 import { db } from '@/offline/db';
 import { getCachedContent } from '@/offline/content';

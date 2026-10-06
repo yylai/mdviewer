@@ -11,7 +11,6 @@ import rehypeSlug from 'rehype-slug';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeReact from 'rehype-react';
 import * as prod from 'react/jsx-runtime';
-import yaml from 'js-yaml';
 import { slug as headingSlug } from 'github-slugger';
 import rehypeTrimCode from './rehype-trim-code';
 import { noteSlug } from './noteIdentity';
@@ -68,30 +67,6 @@ function wikiHref(permalink: string): string {
   const encoded = page.split('/').map((segment) => encodeURIComponent(segment)).join('/');
   if (hashAt === -1) return `#/w/${encoded}`;
   return `#/w/${encoded}#${permalink.slice(hashAt + 1)}`;
-}
-
-function allowedSource(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined;
-  try {
-    const url = new URL(value);
-    if (url.protocol === 'http:' || url.protocol === 'https:') return value;
-  } catch {
-    return undefined;
-  }
-  return undefined;
-}
-
-export function extractFrontmatter(content: string): { source?: string } | null {
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
-  if (!match) return null;
-  try {
-    const parsed = yaml.load(match[1]);
-    if (!parsed || typeof parsed !== 'object') return null;
-    const source = allowedSource((parsed as { source?: unknown }).source);
-    return source ? { source } : {};
-  } catch {
-    return null;
-  }
 }
 
 const wikiLinkOptions = {

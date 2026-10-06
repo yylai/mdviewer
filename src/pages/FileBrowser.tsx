@@ -3,7 +3,7 @@ import { Search, ChevronDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { FileTable } from '@/components/FileTable';
-import { useFolderContext } from '@/components/layout/FolderContext';
+import { useFolderContext } from '@/components/layout/useFolderContext';
 import { useVaultConfig } from '@/offline/useVaultConfig';
 
 type SortOption = 'newest' | 'oldest' | 'name-asc' | 'name-desc';

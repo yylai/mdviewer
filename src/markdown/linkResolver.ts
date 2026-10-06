@@ -19,7 +19,6 @@ async function rememberNote(item: DriveItem, path: string): Promise<void> {
   const parentPath = path.split('/').slice(0, -1).join('/') || '/';
   await db.files.put({
     id: item.id,
-    driveItemId: item.id,
     path,
     name: item.name,
     isFolder: Boolean(item.folder),

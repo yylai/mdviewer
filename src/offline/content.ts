@@ -1,6 +1,6 @@
 import { db } from "./db";
 import type { Client } from "@microsoft/microsoft-graph-client";
-import { downloadFileContent, getDriveItem } from '@/graph/client';
+import { downloadFileContent } from '@/graph/client';
 
 export async function getOrFetchContent(
   client: Client,
@@ -20,7 +20,6 @@ export async function getOrFetchContent(
 
     await db.content.put({
       id: driveItemId,
-      driveItemId,
       content: freshContent,
       // Keep the best-known eTag (current if available, otherwise existing).
       eTag: currentETag ?? cached?.eTag,
@@ -87,39 +86,4 @@ export async function downloadFilesForOffline(
   await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
   return { succeeded, failed };
-}
-
-export async function downloadAndCacheAttachment(
-  client: Client,
-  driveItemId: string,
-  mimeType: string
-): Promise<Blob> {
-  const cached = await db.attachments.get(driveItemId);
-  
-  if (cached) {
-    return cached.blob;
-  }
-
-  const response = await client
-    .api(`/me/drive/items/${driveItemId}/content`)
-    .get();
-  
-  const blob = response as Blob;
-  const item = await getDriveItem(client, driveItemId);
-
-  await db.attachments.put({
-    id: driveItemId,
-    driveItemId,
-    blob,
-    mimeType,
-    size: item.size || blob.size,
-    lastSynced: new Date(),
-  });
-
-  return blob;
-}
-
-export async function getCachedAttachment(driveItemId: string): Promise<Blob | null> {
-  const cached = await db.attachments.get(driveItemId);
-  return cached?.blob || null;
 }

@@ -17,7 +17,7 @@ import { useAuth } from '@/auth/useAuth';
 import { db } from '@/offline/db';
 import type { FileContent } from '@/offline/db';
 import { downloadFilesForOffline } from '@/offline/content';
-import { extractFrontmatter } from '@/markdown';
+import { extractFrontmatter } from '@/markdown/frontmatter';
 import { cn } from '@/lib/utils';
 import type { DriveItem } from '@/graph/client';
 import { Button } from '@/components/ui/button';

@@ -64,9 +64,3 @@ export function useTheme() {
   return { theme, setTheme };
 }
 
-// Initialize theme early to prevent flash
-export function initializeTheme() {
-  const theme = getStoredTheme();
-  applyTheme(theme);
-}
-

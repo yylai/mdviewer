@@ -1,6 +1,7 @@
 import { isValidElement, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
-import { extractFrontmatter, renderMarkdown } from './index';
+import { renderMarkdown } from './index';
+import { extractFrontmatter } from './frontmatter';
 import { resolveLocalWikiTarget, resolveWikiTarget } from './noteIdentity';
 
 function textContent(node: ReactNode): string {
