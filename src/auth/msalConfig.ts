@@ -37,8 +37,3 @@ export const msalConfig: Configuration = {
 export const loginRequest = {
   scopes: ['Files.Read', 'offline_access'],
 };
-
-export const graphScopes = {
-  filesRead: ['Files.Read'],
-  filesReadWrite: ['Files.ReadWrite'],
-};

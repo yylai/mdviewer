@@ -6,8 +6,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuAction,
-  useSidebar,
 } from '@/components/ui/sidebar';
+import { useSidebar } from '@/components/ui/use-sidebar';
 
 export function UserProfile() {
   const { account, isAuthenticated } = useAuth();

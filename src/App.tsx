@@ -1,17 +1,32 @@
-import type { ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { MsalProvider } from '@azure/msal-react';
 import { PublicClientApplication } from '@azure/msal-browser';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { msalConfig } from './auth/msalConfig';
 import { Login } from './pages/Login';
 import { Browse } from './pages/Browse';
 import { VaultPicker } from './pages/VaultPicker';
-import { NoteView } from './pages/NoteView';
 import { Settings } from './pages/Settings';
 import { AppLayout } from './components/layout/AppLayout';
 import { useAuth } from './auth/useAuth';
 import './App.css';
+
+const NoteView = lazy(() => import('./pages/NoteView').then((module) => ({ default: module.NoteView })));
+
+function NoteRoute() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-muted-foreground">Loading...</div>
+        </div>
+      }
+    >
+      <NoteView />
+    </Suspense>
+  );
+}
 
 const msalInstance = new PublicClientApplication(msalConfig);
 const queryClient = new QueryClient({
@@ -44,29 +59,17 @@ function App() {
               }
             />
             <Route
-              path="/browse"
               element={
                 <AppLayout>
-                  <Browse />
+                  <Outlet />
                 </AppLayout>
               }
-            />
-            <Route
-              path="/note/:id"
-              element={
-                <AppLayout>
-                  <NoteView />
-                </AppLayout>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <AppLayout>
-                  <Settings />
-                </AppLayout>
-              }
-            />
+            >
+              <Route path="/browse" element={<Browse />} />
+              <Route path="/note/:itemId" element={<NoteRoute />} />
+              <Route path="/w/*" element={<NoteRoute />} />
+              <Route path="/settings" element={<Settings />} />
+            </Route>
             <Route path="/" element={<Navigate to="/browse" replace />} />
           </Routes>
         </HashRouter>

@@ -1,16 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { ChevronRight, Folder, HardDrive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useDriveItems } from '@/graph/hooks';
+import { useDriveItems, useGraphClient } from '@/graph/hooks';
 import { saveVaultConfig } from '@/offline/vaultConfig';
+import { vaultConfigQueryKey } from '@/offline/useVaultConfig';
 import type { DriveItem } from '@/graph/client';
 
 export function VaultPicker() {
   const [currentPath, setCurrentPath] = useState('');
-  const [pathStack, setPathStack] = useState<Array<{ name: string; path: string }>>([]);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [pathStack, setPathStack] = useState<Array<{ name: string; path: string; id: string | null }>>([]);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const client = useGraphClient();
   
   const {
     items,
@@ -29,36 +34,36 @@ export function VaultPicker() {
 
   const handleFolderClick = (folder: DriveItem) => {
     const newPath = currentPath ? `${currentPath}/${folder.name}` : folder.name;
-    setPathStack([...pathStack, { name: folder.name, path: currentPath }]);
+    setPathStack([...pathStack, { name: folder.name, path: currentPath, id: currentFolderId }]);
+    setCurrentFolderId(folder.id);
     setCurrentPath(newPath);
   };
 
   const handleBack = () => {
     if (pathStack.length === 0) return;
-    
+
     const parent = pathStack[pathStack.length - 1];
     setCurrentPath(parent.path);
+    setCurrentFolderId(parent.id);
     setPathStack(pathStack.slice(0, -1));
   };
 
   const handleSelectVault = async () => {
-    if (!items) return;
-    
-    const currentFolder = items.find(item => item.folder);
-    if (!currentFolder && currentPath === '') {
-      alert('Please select a folder');
-      return;
+    let driveItemId = currentFolderId;
+    if (!driveItemId) {
+      const root = await client.api('/me/drive/root').select('id').get() as { id: string };
+      driveItemId = root.id;
     }
 
     const vaultName = currentPath.split('/').pop() || 'OneDrive Root';
-    const vaultItemId = currentFolder?.id || 'root';
-    
+
     await saveVaultConfig({
       vaultPath: currentPath,
       vaultName,
-      driveItemId: vaultItemId,
+      driveItemId,
     });
-    
+    await queryClient.invalidateQueries({ queryKey: vaultConfigQueryKey });
+
     navigate('/browse');
   };
 

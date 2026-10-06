@@ -1,26 +1,37 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { useMsal } from '@azure/msal-react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Eye, Code, ExternalLink, CheckCircle2, Cloud, LogIn, RefreshCw } from 'lucide-react';
 import { useFileContent } from '@/graph/hooks';
-import { useQueryClient } from '@tanstack/react-query';
+import { createGraphClient, getDriveItemByPath, searchDriveFiles } from '@/graph/client';
 import { useAuth } from '@/auth/useAuth';
-import { renderMarkdown, extractFrontmatter } from '@/markdown';
-import { resolveSlugToItemId } from '@/markdown/linkResolver';
+import { renderMarkdown } from '@/markdown';
+import { extractFrontmatter } from '@/markdown/frontmatter';
+import { resolveStoredWikiTarget } from '@/markdown/linkResolver';
+import { db } from '@/offline/db';
 import { getCachedContent } from '@/offline/content';
 import 'katex/dist/katex.min.css';
 
 export function NoteView() {
-  const { id: slug } = useParams<{ id: string }>();
+  const params = useParams();
+  const directId = params.itemId ?? null;
+  const wikiTarget = params['*'] ?? null;
   const navigate = useNavigate();
   const location = useLocation();
-  const queryClient = useQueryClient();
+  const { instance } = useMsal();
   const { isAuthenticated, login } = useAuth();
-  const [itemId, setItemId] = useState<string | null>(null);
+  const [resolvedId, setResolvedId] = useState<string | null>(null);
+  const [resolvedTarget, setResolvedTarget] = useState<string | null>(null);
+  const [title, setTitle] = useState('Note');
   const [renderedContent, setRenderedContent] = useState<unknown>(null);
+  const [renderError, setRenderError] = useState<string | null>(null);
   const [showRaw, setShowRaw] = useState(false);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const [loadSource, setLoadSource] = useState<'cache' | 'network' | null>(null);
+
+  const itemId = directId ?? (resolvedTarget === wikiTarget ? resolvedId : null);
+  const resolvingWiki = !directId && Boolean(wikiTarget) && resolvedTarget !== wikiTarget;
 
   const {
     data: content,
@@ -32,27 +43,80 @@ export function NoteView() {
   } = useFileContent(itemId || '', !!itemId);
 
   useEffect(() => {
-    if (slug) {
-      resolveSlugToItemId(slug).then(id => {
-        if (id) {
-          setItemId(id);
-          // Prefer checking persistent IndexedDB cache (not just in-memory query cache).
-          getCachedContent(id).then((cached) => {
-            setLoadSource(cached ? 'cache' : 'network');
-          });
+    if (directId || !wikiTarget) return;
+    let cancelled = false;
+    const client = createGraphClient(instance);
+    const lookup = isAuthenticated
+      ? {
+          fetchByPath: async (path: string) => {
+            try {
+              return await getDriveItemByPath(client, path);
+            } catch {
+              return null;
+            }
+          },
+          searchByName: async (name: string) => {
+            try {
+              return await searchDriveFiles(client, name);
+            } catch {
+              return [];
+            }
+          },
         }
-      });
-    }
-  }, [slug, queryClient]);
+      : undefined;
+
+    resolveStoredWikiTarget(wikiTarget, lookup).then((id) => {
+      if (cancelled) return;
+      setResolvedId(id);
+      setResolvedTarget(wikiTarget);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [directId, wikiTarget, isAuthenticated, instance]);
 
   useEffect(() => {
-    if (content) {
-      const frontmatter = extractFrontmatter(content);
-      setSourceUrl(frontmatter?.source || null);
-      renderMarkdown(content).then(result => {
-        setRenderedContent(result);
-      });
+    if (!itemId) return;
+    let cancelled = false;
+    db.files.get(itemId).then((file) => {
+      if (cancelled) return;
+      setTitle(file?.name.replace(/\.md$/i, '') || 'Note');
+    });
+    getCachedContent(itemId).then((cached) => {
+      if (!cancelled) setLoadSource(cached ? 'cache' : 'network');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [itemId]);
+
+  useEffect(() => {
+    if (!content) {
+      setRenderedContent(null);
+      setRenderError(null);
+      setSourceUrl(null);
+      return;
     }
+
+    let cancelled = false;
+    setRenderedContent(null);
+    setRenderError(null);
+    setSourceUrl(extractFrontmatter(content)?.source || null);
+    renderMarkdown(content).then(
+      (result) => {
+        if (!cancelled) setRenderedContent(result);
+      },
+      (renderFailure: unknown) => {
+        if (cancelled) return;
+        setRenderedContent(null);
+        setRenderError(renderFailure instanceof Error ? renderFailure.message : 'Could not render this note');
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
   }, [content]);
 
   useEffect(() => {
@@ -67,7 +131,7 @@ export function NoteView() {
     }
   }, [location.hash, renderedContent]);
 
-  if (!slug) {
+  if (!directId && !wikiTarget) {
     return (
       <div className="p-4">
         <p className="text-destructive">No note specified</p>
@@ -75,7 +139,15 @@ export function NoteView() {
     );
   }
 
-  if (!itemId && !isLoading) {
+  if (!itemId) {
+    if (resolvingWiki) {
+      return (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-muted-foreground">Loading...</div>
+        </div>
+      );
+    }
+
     return (
       <div className="p-4">
         <div className="flex items-center gap-4 mb-6">
@@ -85,7 +157,7 @@ export function NoteView() {
           <h1 className="text-2xl font-bold">Note not found</h1>
         </div>
         <p className="text-muted-foreground">
-          Unable to resolve note: {slug}
+          Unable to resolve note: {wikiTarget}
         </p>
       </div>
     );
@@ -100,7 +172,7 @@ export function NoteView() {
               <Button onClick={() => navigate('/browse')} variant="ghost" size="icon">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <h1 className="text-xl font-semibold truncate">{slug}</h1>
+              <h1 className="text-xl font-semibold truncate">{title}</h1>
             </div>
             <div className="flex items-center gap-1">
               {loadSource && !isLoading && (
@@ -172,7 +244,12 @@ export function NoteView() {
           </div>
         )}
 
-        {showRaw ? (
+        {renderError ? (
+          <div className="p-4 border border-destructive rounded-md">
+            <p className="text-destructive">Could not render this note</p>
+            <p className="text-sm text-muted-foreground mt-2">{renderError}</p>
+          </div>
+        ) : showRaw ? (
           <pre className="bg-muted p-4 rounded-md overflow-auto text-sm">
             <code>{content}</code>
           </pre>

@@ -1,6 +1,5 @@
 import { Client, ResponseType } from '@microsoft/microsoft-graph-client';
 import type { IPublicClientApplication } from '@azure/msal-browser';
-import 'isomorphic-fetch';
 
 export function createGraphClient(msalInstance: IPublicClientApplication) {
   return Client.init({
@@ -115,4 +114,13 @@ export async function getDriveItemByPath(
 ): Promise<DriveItem> {
   const endpoint = `/me/drive/root:/${path}`;
   return await client.api(endpoint).get();
+}
+
+export async function searchDriveFiles(
+  client: Client,
+  name: string
+): Promise<DriveItem[]> {
+  const query = name.replace(/'/g, "''");
+  const response = await client.api(`/me/drive/root/search(q='${query}')`).top(50).get();
+  return response.value || [];
 }

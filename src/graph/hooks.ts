@@ -36,7 +36,7 @@ async function getCachedDriveItems(path: string): Promise<DriveItem[]> {
   const files = await db.files.where('parentPath').equals(parentPath).toArray();
 
   return files.map<DriveItem>((file) => ({
-    id: file.driveItemId,
+    id: file.id,
     name: file.name,
     size: file.size,
     eTag: file.eTag,
@@ -77,7 +77,6 @@ export function useDriveItems(path: string = '', enabled: boolean = true) {
       await db.files.bulkPut(
         page.items.map((item) => ({
           id: item.id,
-          driveItemId: item.id,
           path: path ? `${path}/${item.name}` : item.name,
           name: item.name,
           isFolder: Boolean(item.folder),
@@ -188,24 +187,3 @@ export function useDriveItem(itemId: string, enabled: boolean = true) {
   });
 }
 
-export function usePrefetchFileContent() {
-  const queryClient = useQueryClient();
-  const { instance } = useMsal();
-  const client = createGraphClient(instance);
-
-  return async (itemId: string) => {
-    // Check if already cached in TanStack Query
-    const existingData = queryClient.getQueryData(['file', 'content', itemId]);
-    if (existingData) return; // Already loaded
-
-    // Prefetch (this will check IndexedDB first via getOrFetchContent)
-    await queryClient.prefetchQuery({
-      queryKey: ['file', 'content', itemId],
-      queryFn: async () => {
-        const item = await getDriveItem(client, itemId);
-        return getOrFetchContent(client, itemId, item.eTag);
-      },
-      staleTime: 1000 * 60 * 5, // 5 minutes
-    });
-  };
-}

@@ -3,7 +3,6 @@ import type { Table } from 'dexie';
 
 export interface VaultFile {
   id: string;
-  driveItemId: string;
   path: string;
   name: string;
   isFolder?: boolean;
@@ -11,12 +10,10 @@ export interface VaultFile {
   lastModified?: string;
   size?: number;
   parentPath?: string;
-  aliases?: string[];
 }
 
 export interface FileContent {
   id: string;
-  driveItemId: string;
   content: string;
   eTag?: string;
   lastSynced: Date;
@@ -24,26 +21,10 @@ export interface FileContent {
 
 export interface Attachment {
   id: string;
-  driveItemId: string;
   blob: Blob;
   mimeType: string;
   size: number;
   lastSynced: Date;
-}
-
-export interface SyncState {
-  id: string;
-  deltaLink?: string;
-  lastSync: Date;
-}
-
-export interface PendingOperation {
-  id?: number;
-  type: 'upload' | 'delete' | 'update';
-  driveItemId: string;
-  data?: unknown;
-  timestamp: Date;
-  retryCount: number;
 }
 
 export interface VaultConfig {
@@ -58,8 +39,6 @@ export class VaultDatabase extends Dexie {
   files!: Table<VaultFile, string>;
   content!: Table<FileContent, string>;
   attachments!: Table<Attachment, string>;
-  syncState!: Table<SyncState, string>;
-  pendingOps!: Table<PendingOperation, number>;
   vaultConfig!: Table<VaultConfig, string>;
 
   constructor() {
@@ -70,6 +49,14 @@ export class VaultDatabase extends Dexie {
       attachments: 'id, driveItemId',
       syncState: 'id',
       pendingOps: '++id, type, timestamp',
+      vaultConfig: 'id',
+    });
+    this.version(2).stores({
+      files: 'id, path, name, parentPath',
+      content: 'id, eTag',
+      attachments: 'id',
+      syncState: null,
+      pendingOps: null,
       vaultConfig: 'id',
     });
   }

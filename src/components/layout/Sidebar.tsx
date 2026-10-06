@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Folder, HardDrive, MoveUp } from 'lucide-react';
 import { useDriveItems } from '@/graph/hooks';
-import { getVaultConfig } from '@/offline/vaultConfig';
+import { useVaultConfig } from '@/offline/useVaultConfig';
 import { UserProfile } from './UserProfile';
-import { useFolderContext } from './FolderContext';
+import { useFolderContext } from './useFolderContext';
 import {
   Sidebar,
   SidebarContent,
@@ -15,9 +15,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from '@/components/ui/sidebar';
-import type { VaultConfig } from '@/offline/db';
+import { useSidebar } from '@/components/ui/use-sidebar';
 
 interface FolderNode {
   id: string;
@@ -34,16 +33,13 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { isMobile, setOpenMobile } = useSidebar();
   const { currentPath, setCurrentPath } = useFolderContext();
-  const [vaultConfig, setVaultConfig] = useState<VaultConfig | null>(null);
+  const { data: vaultConfig } = useVaultConfig();
 
   useEffect(() => {
-    getVaultConfig().then(config => {
-      if (config) {
-        setVaultConfig(config);
-        setCurrentPath(config.vaultPath);
-      }
-    });
-  }, [setCurrentPath]);
+    if (vaultConfig && currentPath === '') {
+      setCurrentPath(vaultConfig.vaultPath);
+    }
+  }, [currentPath, setCurrentPath, vaultConfig]);
 
   const activePath = currentPath || vaultConfig?.vaultPath || '';
   const {

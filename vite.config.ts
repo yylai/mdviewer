@@ -27,34 +27,27 @@ export default defineConfig({
         orientation: 'portrait',
         icons: [
           {
+            src: 'icon-180.png',
+            sizes: '180x180',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
             src: 'icon-192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
           },
           {
             src: 'icon-512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
           }
         ]
       },
       workbox: {
         navigateFallback: 'index.html',
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/graph\.microsoft\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'graph-api-cache',
-              networkTimeoutSeconds: 10,
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
-        ]
       }
     })
   ],
