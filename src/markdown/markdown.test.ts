@@ -1,6 +1,7 @@
 import { isValidElement, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { renderMarkdown } from './index';
+import { resolveLocalWikiTarget, resolveWikiTarget } from './noteIdentity';
 
 function textContent(node: ReactNode): string {
   if (node == null || typeof node === 'boolean') return '';
@@ -48,7 +49,7 @@ describe('markdown pipeline', () => {
     const heading = elements(result, 'h2')[0];
 
     expect(heading.props.id).toBe('hello-world');
-    expect(link.props.href).toBe('#/note/target#hello-world');
+    expect(link.props.href).toBe('#/w/target#hello-world');
   });
 
   it('keeps blank lines inside a code block and drops blank lines at the edges', async () => {
@@ -56,5 +57,38 @@ describe('markdown pipeline', () => {
     const code = elements(result, 'code')[0];
 
     expect(textContent(code.props.children)).toBe('alpha\n\nbeta');
+  });
+});
+
+describe('wiki target identity', () => {
+  const notes = [
+    { id: 'guides-note', path: 'Vault/guides/Note.md', name: 'Note.md' },
+    { id: 'archive-note', path: 'Vault/archive/Note.md', name: 'Note.md' },
+  ];
+
+  it('resolves same-named notes in different folders to different ids', () => {
+    expect(resolveLocalWikiTarget('guides/Note', notes, 'Vault')).toBe('guides-note');
+    expect(resolveLocalWikiTarget('archive/Note', notes, 'Vault')).toBe('archive-note');
+    expect(resolveLocalWikiTarget('Note', notes, 'Vault')).toBeNull();
+  });
+
+  it('resolves a wiki link whose folder has not been browsed', async () => {
+    const byPath = await resolveWikiTarget('unbrowsed/Note', [], 'Vault', {
+      fetchByPath: async (path) => (
+        path === 'Vault/unbrowsed/Note.md'
+          ? { id: 'remote-note', name: 'Note.md', path }
+          : null
+      ),
+      searchByName: async () => [],
+    });
+    const bySearch = await resolveWikiTarget('Note', [], 'Vault', {
+      fetchByPath: async () => null,
+      searchByName: async () => [
+        { id: 'searched-note', name: 'Note.md', path: 'Vault/deep/Note.md' },
+      ],
+    });
+
+    expect(byPath).toBe('remote-note');
+    expect(bySearch).toBe('searched-note');
   });
 });

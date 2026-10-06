@@ -14,6 +14,7 @@ import * as prod from 'react/jsx-runtime';
 import yaml from 'js-yaml';
 import { slug as headingSlug } from 'github-slugger';
 import rehypeTrimCode from './rehype-trim-code';
+import { noteSlug } from './noteIdentity';
 
 const sanitizeSchema = {
   ...defaultSchema,
@@ -56,15 +57,17 @@ const sanitizeSchema = {
 
 function wikiPermalink(name: string): string {
   const hashAt = name.indexOf('#');
-  const page = (hashAt === -1 ? name : name.slice(0, hashAt)).replace(/ /g, '-').toLowerCase();
+  const page = noteSlug(hashAt === -1 ? name : name.slice(0, hashAt));
   if (hashAt === -1) return page;
   return `${page}#${headingSlug(name.slice(hashAt + 1))}`;
 }
 
 function wikiHref(permalink: string): string {
   const hashAt = permalink.indexOf('#');
-  if (hashAt === -1) return `#/note/${permalink}`;
-  return `#/note/${permalink.slice(0, hashAt)}#${permalink.slice(hashAt + 1)}`;
+  const page = hashAt === -1 ? permalink : permalink.slice(0, hashAt);
+  const encoded = page.split('/').map((segment) => encodeURIComponent(segment)).join('/');
+  if (hashAt === -1) return `#/w/${encoded}`;
+  return `#/w/${encoded}#${permalink.slice(hashAt + 1)}`;
 }
 
 const wikiLinkOptions = {

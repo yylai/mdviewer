@@ -52,7 +52,15 @@ function App() {
               }
             />
             <Route
-              path="/note/:id"
+              path="/note/:itemId"
+              element={
+                <AppLayout>
+                  <NoteView />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/w/*"
               element={
                 <AppLayout>
                   <NoteView />

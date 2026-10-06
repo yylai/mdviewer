@@ -16,7 +16,6 @@ import { useDriveItems, useGraphClient } from '@/graph/hooks';
 import { useAuth } from '@/auth/useAuth';
 import { db } from '@/offline/db';
 import { downloadFilesForOffline } from '@/offline/content';
-import { createSlugFromFilename } from '@/markdown/linkResolver';
 import { extractFrontmatter } from '@/markdown';
 import { cn } from '@/lib/utils';
 import type { DriveItem } from '@/graph/client';
@@ -244,8 +243,7 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
 
   const handleFileClick = (file: DriveItem) => {
     if (isMarkdownFile(file)) {
-      const slug = createSlugFromFilename(file.name);
-      navigate(`/note/${slug}`);
+      navigate(`/note/${encodeURIComponent(file.id)}`);
     }
   };
 
