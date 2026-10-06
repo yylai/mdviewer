@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { ChevronRight, Folder, HardDrive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDriveItems } from '@/graph/hooks';
 import { saveVaultConfig } from '@/offline/vaultConfig';
+import { vaultConfigQueryKey } from '@/offline/useVaultConfig';
 import type { DriveItem } from '@/graph/client';
 
 export function VaultPicker() {
   const [currentPath, setCurrentPath] = useState('');
   const [pathStack, setPathStack] = useState<Array<{ name: string; path: string }>>([]);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   
   const {
     items,
@@ -58,7 +61,8 @@ export function VaultPicker() {
       vaultName,
       driveItemId: vaultItemId,
     });
-    
+    await queryClient.invalidateQueries({ queryKey: vaultConfigQueryKey });
+
     navigate('/browse');
   };
 

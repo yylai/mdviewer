@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   File,
@@ -15,6 +15,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useDriveItems, useGraphClient } from '@/graph/hooks';
 import { useAuth } from '@/auth/useAuth';
 import { db } from '@/offline/db';
+import type { FileContent } from '@/offline/db';
 import { downloadFilesForOffline } from '@/offline/content';
 import { extractFrontmatter } from '@/markdown';
 import { cn } from '@/lib/utils';
@@ -56,76 +57,33 @@ function isMarkdownFile(item: DriveItem): boolean {
   return item.name.toLowerCase().endsWith('.md');
 }
 
-function SourceCell({ item, refreshKey }: { item: DriveItem; refreshKey: number }) {
-  const [domain, setDomain] = React.useState<string | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    async function loadSource() {
-      setIsLoading(true);
-      try {
-        const cached = await db.content.get(item.id);
-        if (cached?.content) {
-          const frontmatter = extractFrontmatter(cached.content);
-          if (frontmatter?.source) {
-            try {
-              const url = new URL(frontmatter.source);
-              setDomain(url.hostname);
-            } catch {
-              setDomain(null);
-            }
-          } else {
-            setDomain(null);
-          }
-        } else {
-          setDomain(null);
-        }
-      } catch {
-        setDomain(null);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    loadSource();
-  }, [item.id, refreshKey]);
-
-  if (isLoading) {
-    return <span className="text-sm text-muted-foreground">-</span>;
+function sourceDomain(content?: string): string | null {
+  if (!content) return null;
+  const frontmatter = extractFrontmatter(content);
+  if (!frontmatter?.source) return null;
+  try {
+    return new URL(frontmatter.source).hostname;
+  } catch {
+    return null;
   }
+}
 
+function SourceCell({ content }: { content?: string }) {
   return (
     <span className="text-sm text-muted-foreground">
-      {domain || '-'}
+      {sourceDomain(content) || '-'}
     </span>
   );
 }
 
-interface CacheStatus {
-  cached: boolean;
-  checking: boolean;
-}
-
-function CacheStatusIcon({ item, refreshKey }: { item: DriveItem; refreshKey: number }) {
-  const [status, setStatus] = React.useState<CacheStatus>({ cached: false, checking: true });
-
-  React.useEffect(() => {
-    async function checkCache() {
-      setStatus({ cached: false, checking: true });
-      const cached = await db.content.get(item.id);
-      if (cached && item.eTag && cached.eTag === item.eTag) {
-        setStatus({ cached: true, checking: false });
-      } else {
-        setStatus({ cached: false, checking: false });
-      }
-    }
-    checkCache();
-  }, [item.id, item.eTag, refreshKey]);
-
-  if (status.checking) {
+function CacheStatusIcon({ item, content, checking }: { item: DriveItem; content?: FileContent; checking: boolean }) {
+  if (checking) {
     return <div className="w-4 h-4" />;
   }
 
-  return status.cached ? (
+  const cached = Boolean(content && item.eTag && content.eTag === item.eTag);
+
+  return cached ? (
     <span title="Cached locally">
       <CheckCircle2 className="w-4 h-4 text-green-500" />
     </span>
@@ -159,35 +117,11 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [cacheRefreshKey, setCacheRefreshKey] = useState(0);
 
-  // Clear selection when navigating to a different folder
   useEffect(() => {
     setSelectedIds(new Set());
     setDownloadError(null);
     setDownloadProgress(null);
   }, [currentPath]);
-
-  // Cache file metadata to db.files for slug resolution
-  React.useEffect(() => {
-    if (items && items.length > 0) {
-      const cacheFiles = async () => {
-        for (const item of items) {
-          if (!item.folder) {
-            await db.files.put({
-              id: item.id,
-              driveItemId: item.id,
-              path: currentPath ? `${currentPath}/${item.name}` : item.name,
-              name: item.name,
-              eTag: item.eTag,
-              lastModified: item.lastModifiedDateTime,
-              size: item.size,
-              parentPath: currentPath || '/',
-            });
-          }
-        }
-      };
-      cacheFiles();
-    }
-  }, [items, currentPath]);
 
   const sortedAndFilteredItems = useMemo(() => {
     if (!items || items.length === 0) return [];
@@ -227,6 +161,31 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
 
     return sorted;
   }, [items, searchQuery, sortBy]);
+
+  const contentIds = useMemo(
+    () => sortedAndFilteredItems.map((item) => item.id),
+    [sortedAndFilteredItems],
+  );
+  const [cachedContent, setCachedContent] = useState<{
+    ready: boolean;
+    rows: Map<string, FileContent | undefined>;
+  }>({ ready: false, rows: new Map() });
+
+  useEffect(() => {
+    let cancelled = false;
+    setCachedContent((current) => ({ ready: false, rows: current.rows }));
+    db.content.bulkGet(contentIds).then((records) => {
+      if (cancelled) return;
+      const rows = new Map<string, FileContent | undefined>();
+      contentIds.forEach((id, index) => {
+        rows.set(id, records[index]);
+      });
+      setCachedContent({ ready: true, rows });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [contentIds, cacheRefreshKey]);
 
   const selectableItems = useMemo(
     () => sortedAndFilteredItems.filter(isMarkdownFile),
@@ -293,13 +252,14 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
         }
       );
 
-      for (const id of result.succeeded) {
-        const cached = await db.content.get(id);
+      const cachedRows = await db.content.bulkGet(result.succeeded);
+      result.succeeded.forEach((id, index) => {
+        const cached = cachedRows[index];
         if (cached?.content) {
           queryClient.setQueryData(['file', 'cached-content', id], cached.content);
           queryClient.setQueryData(['file', 'content', id], cached.content);
         }
-      }
+      });
 
       setCacheRefreshKey((key) => key + 1);
 
@@ -440,7 +400,11 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  <CacheStatusIcon item={item} refreshKey={cacheRefreshKey} />
+                  <CacheStatusIcon
+                    item={item}
+                    content={cachedContent.rows.get(item.id)}
+                    checking={!cachedContent.ready}
+                  />
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
@@ -453,7 +417,7 @@ export function FileTable({ currentPath, searchQuery, sortBy }: FileTableProps) 
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <SourceCell item={item} refreshKey={cacheRefreshKey} />
+                  <SourceCell content={cachedContent.rows.get(item.id)?.content} />
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">
                   {formatDate(item.lastModifiedDateTime)}

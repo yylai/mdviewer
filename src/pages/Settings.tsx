@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Folder, Trash2, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/auth/useAuth';
-import { getVaultConfig, clearVaultConfig } from '@/offline/vaultConfig';
-import type { VaultConfig } from '@/offline/db';
+import { clearVaultConfig } from '@/offline/vaultConfig';
+import { useVaultConfig, vaultConfigQueryKey } from '@/offline/useVaultConfig';
 import { useTheme } from '@/hooks/use-theme';
 
 function formatBytes(value?: number): string {
@@ -22,12 +23,9 @@ export function Settings() {
   const { account, isAuthenticated, login, logout } = useAuth();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
-  const [vaultConfig, setVaultConfig] = useState<VaultConfig | null>(null);
+  const queryClient = useQueryClient();
+  const { data: vaultConfig } = useVaultConfig();
   const [storageInfo, setStorageInfo] = useState<{ usage?: number; quota?: number; error?: string }>({});
-
-  useEffect(() => {
-    getVaultConfig().then(setVaultConfig);
-  }, []);
 
   useEffect(() => {
     async function fetchStorageInfo() {
@@ -47,12 +45,14 @@ export function Settings() {
 
   const handleChangeVault = async () => {
     await clearVaultConfig();
+    await queryClient.invalidateQueries({ queryKey: vaultConfigQueryKey });
     navigate('/vault-picker');
   };
 
   const handleClearCache = async () => {
     if (confirm('Clear all cached files? You will need to sync again.')) {
       await clearVaultConfig();
+      await queryClient.invalidateQueries({ queryKey: vaultConfigQueryKey });
       // Refresh storage info after clearing cache
       if ('storage' in navigator && 'estimate' in navigator.storage) {
         try {

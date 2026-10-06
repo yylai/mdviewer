@@ -4,27 +4,21 @@ import { Input } from '@/components/ui/input';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { FileTable } from '@/components/FileTable';
 import { useFolderContext } from '@/components/layout/FolderContext';
-import { getVaultConfig } from '@/offline/vaultConfig';
-import type { VaultConfig } from '@/offline/db';
+import { useVaultConfig } from '@/offline/useVaultConfig';
 
 type SortOption = 'newest' | 'oldest' | 'name-asc' | 'name-desc';
 
 export function FileBrowser() {
   const { currentPath, setCurrentPath } = useFolderContext();
-  const [vaultConfig, setVaultConfig] = useState<VaultConfig | null>(null);
+  const { data: vaultConfig, isLoading } = useVaultConfig();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
   useEffect(() => {
-    getVaultConfig().then(config => {
-      if (config) {
-        setVaultConfig(config);
-        if (!currentPath) {
-          setCurrentPath(config.vaultPath);
-        }
-      }
-    });
-  }, [currentPath, setCurrentPath]);
+    if (vaultConfig && currentPath === '') {
+      setCurrentPath(vaultConfig.vaultPath);
+    }
+  }, [currentPath, setCurrentPath, vaultConfig]);
 
   const getFolderName = () => {
     if (!vaultConfig || !currentPath) return 'Files';
@@ -34,7 +28,7 @@ export function FileBrowser() {
     return parts[parts.length - 1] || vaultConfig.vaultName;
   };
 
-  if (!vaultConfig) {
+  if (isLoading || !vaultConfig) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-muted-foreground">Loading local vault...</div>
