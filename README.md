@@ -78,6 +78,12 @@ pnpm dev
 - Folder navigation is limited to the vault root and its immediate children
 - Single account only (no account switching, no OneDrive for Business)
 
+## X ingestion CLI
+
+This branch also includes a standalone CLI for ingesting X bookmarks and likes
+into a local SQLite archive. See [`docs/x-ingestion.md`](docs/x-ingestion.md)
+for API notes, datastore rationale, setup, and example queries.
+
 ## Environment Variables
 
 - `VITE_MSAL_CLIENT_ID` (required)
